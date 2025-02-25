@@ -65,7 +65,7 @@ const MainDisplay = () => {
     <div className="p-0 overflow-visible">
       <Slider {...settings}>
         {movies.map((movie) => (
-          <div className="overflow-visible my-8" key={movie.id}>
+          <div className="overflow-visible mb-8" key={movie.id}>
             <div
               className="slider-item"
               style={{
