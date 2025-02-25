@@ -110,6 +110,7 @@ const MovieDisplay = () => {
           <Swiper
             modules={[Pagination, EffectCoverflow, Autoplay]}
             className="mt-64 w-full max-w-[1200px] h-[600px] sm:h-[350px] md:h-[450px] xl:h-[1000px]"
+            style={{ overflow: "visible" }}
             onSlideChange={getImage}
             ref={imgRef}
             loop={true}
