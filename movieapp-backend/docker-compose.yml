@@ -1,0 +1,48 @@
+services:
+  backend:
+    build:
+      context: .  # Backend is in the same directory as docker-compose.yml
+    container_name: backend_container
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - PORT=${PORT}
+    depends_on:
+      - mongo
+    networks:
+      - backend-network
+    volumes:
+      - .:/app  # Mount local backend code for development
+      - /app/node_modules  # Prevent overwriting node_modules
+
+  mongo:
+    image: mongo
+    container_name: mongo_container
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - backend-network
+
+  frontend:
+    build:
+      context: ../movieapp-frontend  # Relative path to frontend
+    container_name: frontend_container
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://backend:8000
+    networks:
+      - backend-network
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:
+
+networks:
+  backend-network:
+    driver: bridge

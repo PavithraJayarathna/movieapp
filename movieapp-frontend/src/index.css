@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "~slick-carousel/slick/slick.css";
+@import "~slick-carousel/slick/slick-theme.css";
+
+.slick-track {
+    overflow: visible; /* Allow items to overflow the slick track container */
+  }
+  
+  .slick-slide {
+    overflow: visible; /* Allow each individual slide to overflow */
+  }
+  
