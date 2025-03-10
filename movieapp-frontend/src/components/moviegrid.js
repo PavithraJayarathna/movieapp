@@ -1,112 +1,48 @@
-import React from "react";
-import Slider from "react-slick";
-import MovieCard from "./moviecard";
+import React, { useState, useEffect } from "react";
 
-// import {CustomPrevArrow, CustomNextArrow} from "./arrow";
+const MovieList = ({ title, movieIds }) => {
+  const [movies, setMovies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const API_KEY = "cccd7d7b";
 
-import H1 from "../assets/img/h1.jpg";
-import H2 from "../assets/img/h2.jpg";
-import H3 from "../assets/img/h3.jpg";
-import H4 from "../assets/img/h4.jpg";
-import H5 from "../assets/img/h5.jpg";
-import H6 from "../assets/img/h6.png";
+  useEffect(() => {
+    const fetchMovies = async () => {
+      setLoading(true);
+      try {
+        const movieData = await Promise.all(
+          movieIds.map(async (id) => {
+            const response = await fetch(`https://www.omdbapi.com/?apikey=${API_KEY}&i=${id}`);
+            return response.json();
+          })
+        );
+        setMovies(movieData);
+      } catch (error) {
+        console.error("Error fetching movies:", error);
+      }
+      setLoading(false);
+    };
 
-const movies = [
-  {
-    id: 1,
-    title: "Justice League",
-    image: H1, // Image: Justice League
-    hoverImage: H4, // Image for hover: The Boys
-    releaseDate: "2021",
-    rating: 6.0,
-    duration: "2h 0m",
-  },
-  {
-    id: 2,
-    title: "John Wick",
-    image: H2, // Image: John Wick
-    hoverImage: H5, // Image for hover: Inside Out
-    releaseDate: "2014",
-    rating: 7.4,
-    duration: "1h 41m",
-  },
-  {
-    id: 3,
-    title: "Wednesday",
-    image: H3, // Image: Wednesday
-    hoverImage: H4, // Image for hover: The Boys
-    releaseDate: "2022",
-    rating: 8.0,
-    duration: "1h 0m",
-  },
-  {
-    id: 4,
-    title: "The Boys",
-    image: H4, // Image: The Boys
-    hoverImage: H5, // Image for hover: Inside Out
-    releaseDate: "2019",
-    rating: 8.7,
-    duration: "1h 0m",
-  },
-  {
-    id: 5,
-    title: "Inside Out",
-    image: H5, // Image: Inside Out
-    hoverImage: H1, // Image for hover: Justice League
-    releaseDate: "2015",
-    rating: 8.1,
-    duration: "1h 34m",
-  },
-  {
-    id: 6,
-    title: "Harry Potter and the Philosopher's Stone",
-    image: H6, // Image: Harry Potter
-    hoverImage: H2, // Image for hover: John Wick
-    releaseDate: "2001",
-    rating: 7.6,
-    duration: "2h 32m",
-  },
-];
-
-
-const MovieGrid = () => {
-  const settings = {
-    infinite: true,
-    slidesToShow: 5,
-    slidesToScroll: 5,
-    autoplay: false,
-    autoplaySpeed: 3000,
-    dots: false,
-    arrows: true,
-    responsive: [
-      {
-        breakpoint: 1024, // For tablet devices
-        settings: {
-          slidesToShow: 3,
-          slidesToScroll: 1,
-        },
-      },
-      {
-        breakpoint: 768, // For mobile devices
-        settings: {
-          slidesToShow: 1,
-          slidesToScroll: 1,
-        },
-      },
-    ],
-  };
+    fetchMovies();
+  }, [movieIds]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 mt-4 sm:px-6 lg:px-8">
-      <Slider {...settings}>
-        {movies.map((movie) => (
-          <div key={movie.id} className="p-2">
-            <MovieCard movie={movie} />
-          </div>
-        ))}
-      </Slider>
+    <div className="px-4 mx-auto text-white max-w-7xl sm:px-6 lg:px-8">
+      <h2 className="mt-5 text-2xl font-bold">{title}</h2>
+      {loading ? (
+        <p className="mt-4 text-center">Loading movies...</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 mt-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {movies.map((movie) => (
+            <div key={movie.imdbID} className="bg-[#1e293b] p-3 rounded-lg shadow-lg">
+              <img src={movie.Poster} alt={movie.Title} className="object-cover w-full rounded h-60" />
+              <h3 className="mt-2 text-lg font-semibold">{movie.Title}</h3>
+              <p className="text-sm text-gray-400">{movie.Year}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-export default MovieGrid;
+export default MovieList;

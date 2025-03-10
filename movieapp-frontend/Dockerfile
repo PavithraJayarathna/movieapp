@@ -16,7 +16,7 @@ COPY . .
 # Build the React app
 RUN npm run build
 
-# Stage 2: Serve the React app using Nginx
+# Stage : Serve the React app using Nginx
 FROM nginx:alpine
 
 # Copy the built files from the build-stage to the nginx server

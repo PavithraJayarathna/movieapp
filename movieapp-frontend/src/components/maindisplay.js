@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import Slider from "react-slick";
 import ColorThief from "colorthief";
 
-import H4 from "../assets/img/h1.jpg";
+import H1 from "../assets/img/h1.jpg";
 import H2 from "../assets/img/h2.jpg";
-import H1 from "../assets/img/h3.jpg";
-import H3 from "../assets/img/h4.jpg";
+import H3 from "../assets/img/h3.jpg";
+import H4 from "../assets/img/h4.jpg";
 import H5 from "../assets/img/h5.jpg";
 import H6 from "../assets/img/h6.png";
 
@@ -65,7 +65,7 @@ const MainDisplay = () => {
     <div className="p-0 overflow-visible">
       <Slider {...settings}>
         {movies.map((movie) => (
-          <div className="my-8 overflow-visible" key={movie.id}>
+          <div className="mb-8 overflow-visible" key={movie.id}>
             <div
               className="slider-item"
               style={{
