@@ -2,8 +2,7 @@ pipeline {
     agent any 
     
     environment {
-        // Docker Hub credentials stored in Jenkins
-        DOCKER_CREDENTIALS = 'my-devops'  // Using the ID of your created credentials
+        DOCKER_CREDENTIALS = 'my-devops'  // Jenkins credential ID
         DOCKER_USERNAME = 'pavithra0228'  // Your Docker Hub username
     }
     
@@ -15,57 +14,70 @@ pipeline {
                 }
             }
         }
-        
-        stage('Build Docker Image for Frontend') {
-            steps {
-                script {
-                    // Build the frontend Docker image
-                    bat 'docker build -t pavithra0228/movieapp-backend-frontend:%BUILD_NUMBER% ./movieapp-frontend'
-                }
-            }
-        }
 
-        stage('Build Docker Image for Backend') {
-            steps {
-                script {
-                    // Build the backend Docker image
-                    bat 'docker build -t pavithra0228/movieapp-backend-backend:%BUILD_NUMBER% ./movieapp-backend'
-                }
-            }
-        }
+        stage('Docker Build & Push in Parallel') {
+            parallel {
+                stage('Frontend Docker Build & Push') {
+                    stages {
+                        stage('Build Frontend Image') {
+                            steps {
+                                script {
+                                    bat 'docker build -t pavithra0228/movieapp-frontend:%BUILD_NUMBER% ./movieapp-frontend'
+                                }
+                            }
+                        }
 
-        stage('Login to Docker Hub') {
-            steps {
-                withCredentials([string(credentialsId: DOCKER_CREDENTIALS, variable: 'DOCKER_PASSWORD')]) {
-                    script {
-                        bat "docker login -u ${DOCKER_USERNAME} -p %DOCKER_PASSWORD%"
+                        stage('Push Frontend Image') {
+                            steps {
+                                withCredentials([string(credentialsId: DOCKER_CREDENTIALS, variable: 'DOCKER_PASSWORD')]) {
+                                    script {
+                                        bat "docker login -u ${DOCKER_USERNAME} -p %DOCKER_PASSWORD%"
+                                        bat 'docker push pavithra0228/movieapp-frontend:%BUILD_NUMBER%'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage('Backend Docker Build & Push') {
+                    stages {
+                        stage('Build Backend Image') {
+                            steps {
+                                script {
+                                    bat 'docker build -t pavithra0228/movieapp-backend:%BUILD_NUMBER% ./movieapp-backend'
+                                }
+                            }
+                        }
+
+                        stage('Push Backend Image') {
+                            steps {
+                                withCredentials([string(credentialsId: DOCKER_CREDENTIALS, variable: 'DOCKER_PASSWORD')]) {
+                                    script {
+                                        bat "docker login -u ${DOCKER_USERNAME} -p %DOCKER_PASSWORD%"
+                                        bat 'docker push pavithra0228/movieapp-backend:%BUILD_NUMBER%'
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        stage('Push Frontend Image') {
+        stage('Deploy (Optional)') {
             steps {
-                script {
-                    // Push the frontend image to Docker Hub
-                    bat 'docker push pavithra0228/movieapp-backend-frontend:%BUILD_NUMBER%'
-                }
-            }
-        }
-        
-        stage('Push Backend Image') {
-            steps {
-                script {
-                    // Push the backend image to Docker Hub
-                    bat 'docker push pavithra0228/movieapp-backend-backend:%BUILD_NUMBER%'
-                }
+                echo 'Deploying the application...'
             }
         }
     }
-    
+
     post {
-        always {
-            bat 'docker logout'
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
