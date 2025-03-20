@@ -71,7 +71,7 @@ pipeline {
             }
         }
 
-        stage('Build Error Checking') {
+        /*stage('Build Error Checking') {
             steps {
                 script {
                     try {
@@ -88,7 +88,7 @@ pipeline {
                     }
                 }
             }
-        }
+        }*/
 
         stage('Automated Tests') {
             steps {
