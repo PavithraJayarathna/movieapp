@@ -88,7 +88,7 @@ pipeline {
                     }
                 }
             }
-        }*/
+        }
 
         stage('Automated Tests') {
             steps {
@@ -107,7 +107,7 @@ pipeline {
                     }
                 }
             }
-        }
+        }*/
 
         stage('Deploy to EC2') {
             steps {
