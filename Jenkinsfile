@@ -111,7 +111,7 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                echo 'Deploying the application to EC2...'
+                bat echo 'Deploying the application to EC2...'
 
                 // SCP the docker-compose.yml file to EC2
                 sh "scp -i ${PEM_KEY_PATH} ./docker-compose.yml ubuntu@${EC2_IP}:/home/ubuntu/app/"
