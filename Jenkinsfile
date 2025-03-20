@@ -5,7 +5,7 @@ pipeline {
         DOCKER_CREDENTIALS = 'my-docker-password'  // Jenkins credential ID
         DOCKER_USERNAME = 'pavithra0228'  // Your Docker Hub username
         EC2_IP = 'ec2-18-212-53-48.compute-1.amazonaws.com'  // EC2 public IP
-        PEM_KEY_PATH = 'C:\\Users\\pavit\\Downloads\\aws\\movie_app.pem'  // Path to your PEM key for EC2
+        PEM_KEY_PATH = 'C:\\Users\\pavit\\Downloads\\aws\\movie_app.pem'  // Path to your PEM key
     }
 
     stages {
@@ -71,11 +71,11 @@ pipeline {
             steps {
                 bat 'echo Deploying the application to EC2...'
 
-                // SCP command to copy docker-compose.yml
-                bat 'powershell.exe -Command "& {scp -i ${PEM_KEY_PATH} ./docker-compose.yml ubuntu@${EC2_IP}:/home/ubuntu/app/}"'
+                // Fixed SCP command
+                bat 'powershell.exe -Command "& {scp -i \\"C:\\Users\\pavit\\Downloads\\aws\\movie_app.pem\\" C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\moveappDevop\\docker-compose.yml ubuntu@ec2-18-212-53-48.compute-1.amazonaws.com:/home/ubuntu/app/}"'
 
-                // SSH into EC2 and run docker-compose
-                bat 'powershell.exe -Command "& {ssh -i ${PEM_KEY_PATH} ubuntu@${EC2_IP} \'docker-compose up -d\'}"'
+                // Fixed SSH command
+                bat 'powershell.exe -Command "& {ssh -i \\"C:\\Users\\pavit\\Downloads\\aws\\movie_app.pem\\" ubuntu@ec2-18-212-53-48.compute-1.amazonaws.com \\"docker-compose up -d\\"}"'
             }
         }
     }
