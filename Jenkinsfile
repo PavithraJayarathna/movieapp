@@ -71,11 +71,11 @@ pipeline {
             steps {
                 bat 'echo Deploying the application to EC2...'
 
-                // SCP command using Windows PowerShell
-                bat 'powershell.exe -Command "& {scp -i \\"${PEM_KEY_PATH}\\" ./docker-compose.yml ubuntu@${EC2_IP}:/home/ubuntu/app/}"'
+                // SCP command to copy docker-compose.yml
+                bat 'powershell.exe -Command "& {scp -i ${PEM_KEY_PATH} ./docker-compose.yml ubuntu@${EC2_IP}:/home/ubuntu/app/}"'
 
                 // SSH into EC2 and run docker-compose
-                bat 'powershell.exe -Command "& {ssh -i \\"${PEM_KEY_PATH}\\" ubuntu@${EC2_IP} \\"docker-compose up -d\\"}"'
+                bat 'powershell.exe -Command "& {ssh -i ${PEM_KEY_PATH} ubuntu@${EC2_IP} \'docker-compose up -d\'}"'
             }
         }
     }
