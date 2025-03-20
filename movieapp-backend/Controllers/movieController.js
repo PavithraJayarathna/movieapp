@@ -1,6 +1,5 @@
 const axios = require('axios');
-const MovieModel = require('../models/movie');
-const mongoose = require('mongoose');
+
 
 const searchMovieByName = async (req, res) => {
     try {
@@ -55,7 +54,7 @@ const searchMovieByName = async (req, res) => {
 
         return res.status(200).json(movieResult); // Send to frontend
     } catch (error) {
-        console.error(error);
+      
         return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };

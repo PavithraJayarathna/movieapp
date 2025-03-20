@@ -9,7 +9,7 @@ import "swiper/css/pagination";
 import ColorThief from "colorthief";
 
 import backImage from "../assets/back.jpg";
-import backImage2 from "../assets/back2.jpg";
+
 
 import child from "../assets/topchild.png";
 import p1 from "../assets/w1.jpg";
