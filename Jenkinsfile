@@ -4,8 +4,8 @@ pipeline {
     environment {
         DOCKER_CREDENTIALS = 'my-docker-password'  // Jenkins credential ID
         DOCKER_USERNAME = 'pavithra0228'  // Your Docker Hub username
-        EC2_IP = 'ec2-18-212-53-48.compute-1.amazonaws.com'  // EC2 public IP
-        PEM_KEY_PATH = 'C:\\Users\\pavit\\Downloads\\aws\\movie_app.pem'  // Path to your PEM key
+        EC2_PRIVATE_KEY_PATH = 'C:\\Users\\pavit\\Downloads\\Movieappaws\\movie_app_new.pem'  // Path to your PEM key
+        EC2_USER = 'ubuntu'  // EC2 user
     }
 
     stages {
@@ -13,6 +13,16 @@ pipeline {
             steps {
                 retry(3) {
                     git branch: 'main', url: 'https://github.com/PavithraJayarathna/movieapp.git'
+                }
+            }
+        }
+
+        stage('Terraform Init and Apply') {
+            steps {
+                script {
+                    // Run Terraform Init and Apply to create EC2 instance
+                    sh 'terraform init'
+                    sh 'terraform apply -auto-approve'
                 }
             }
         }
@@ -69,13 +79,16 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                bat 'echo Deploying the application to EC2...'
+                script {
+                    // Retrieve the public IP from Terraform output
+                    def ec2_public_ip = sh(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
 
-                // Fixed SCP command
-                bat 'powershell.exe -Command "& {scp -i \\"C:\\Users\\pavit\\Downloads\\aws\\movie_app.pem\\" C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\moveappDevop\\docker-compose.yml ubuntu@ec2-18-212-53-48.compute-1.amazonaws.com:/home/ubuntu/app/}"'
+                    // Copy docker-compose.yml to EC2 instance
+                    sh "scp -i ${EC2_PRIVATE_KEY_PATH} docker-compose.yml ${EC2_USER}@${ec2_public_ip}:/home/ubuntu/app/"
 
-                // Fixed SSH command
-                bat 'powershell.exe -Command "& {ssh -i \\"C:\\Users\\pavit\\Downloads\\aws\\movie_app.pem\\" ubuntu@ec2-18-212-53-48.compute-1.amazonaws.com \\"docker-compose up -d\\"}"'
+                    // SSH to EC2 instance and run Docker Compose to start the containers
+                    sh "ssh -i ${EC2_PRIVATE_KEY_PATH} ${EC2_USER}@${ec2_public_ip} 'docker-compose up -d'"
+                }
             }
         }
     }
