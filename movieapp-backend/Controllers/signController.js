@@ -1,5 +1,7 @@
-const bcrypt = require('bcryptjs');
-const User = require('../models/User');
+import bcrypt from 'bcryptjs';      // Instead of 'const bcrypt = require('bcryptjs')'
+import User from '../models/User.js';
+
+
 
 
 const signup = async (req,res) => {
@@ -26,4 +28,4 @@ catch(err){
 }
 }
 
-module.exports = signup;
+export default signup;

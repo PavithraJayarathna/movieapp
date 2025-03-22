@@ -1,12 +1,12 @@
-const express = require('express');
+import express from 'express';
+import { searchMovieByName } from '../Controllers/movieController.js';
+
 const router = express.Router();
-const { searchMovieByName } = require('../Controllers/movieController');
 
-
-//router.get('/movie/:movieId', fetchAndSaveMovie);
-//router.get('/movies', getMovies); 
-//router.get('/movies/:id', getMovieById); 
+// Define your routes
+// router.get('/movie/:movieId', fetchAndSaveMovie);
+// router.get('/movies', getMovies); 
+// router.get('/movies/:id', getMovieById); 
 router.get('/movies/search/:movieName', searchMovieByName);
 
-
-module.exports = router;
+export default router;  // Use export default instead of module.exports

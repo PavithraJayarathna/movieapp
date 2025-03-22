@@ -1,7 +1,6 @@
-const axios = require('axios');
+import axios from 'axios';
 
-
-const searchMovieByName = async (req, res) => {
+export const searchMovieByName = async (req, res) => {
     try {
         const movieName = req.params.movieName;
 
@@ -54,12 +53,9 @@ const searchMovieByName = async (req, res) => {
 
         return res.status(200).json(movieResult); // Send to frontend
     } catch (error) {
-      
         return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
-
-module.exports = { searchMovieByName };
 
 
 /*const fetchAndSaveMovie = async (req, res) => {

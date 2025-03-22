@@ -1,10 +1,10 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-const MovieRouter = require('./routes/movie');
-const UserRouter = require('./routes/user');
+import express from 'express';
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import MovieRouter from './routes/movie.js';
+import UserRouter from './routes/user.js';
 
 // Load environment variables
 dotenv.config();

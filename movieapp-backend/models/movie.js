@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const MovieSchema = new mongoose.Schema({
     tmdbId: { type: Number, required: true, unique: true },
@@ -16,4 +16,4 @@ const MovieSchema = new mongoose.Schema({
 
 })
 const MovieModel = mongoose.model("movie", MovieSchema);
-module.exports = MovieModel;
+export default MovieModel;
