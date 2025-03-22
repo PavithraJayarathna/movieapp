@@ -1,0 +1,14 @@
+node_modules/
+package-lock.json
+yarn.lock
+
+dist/
+build/
+
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+ansible/*.retry
+
+*.tar
+*.img
