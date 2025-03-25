@@ -2,10 +2,10 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_CREDENTIALS = 'my-docker-password'  // Jenkins credential ID
-        DOCKER_USERNAME = 'pavithra0228'  // Your Docker Hub username
-        EC2_PRIVATE_KEY_PATH = 'C:\\Users\\pavit\\Downloads\\Movieappaws\\movie_app_new.pem'  // Path to your PEM key
-        EC2_USER = 'ubuntu'  // EC2 user
+        DOCKER_CREDENTIALS = 'my-docker-password'  
+        DOCKER_USERNAME = 'pavithra0228'  
+        EC2_PRIVATE_KEY = credentials('aws-ec2-key')
+        EC2_USER = 'ubuntu'
     }
 
     stages {
@@ -20,21 +20,29 @@ pipeline {
         stage('Terraform Init and Apply') {
             steps {
                 script {
-                    // Run Terraform Init and Apply to create EC2 instance
                     sh 'terraform init'
                     sh 'terraform apply -auto-approve'
                 }
             }
         }
 
+        stage('Configure EC2 with Ansible') {
+            steps {
+                script {
+                    def ec2_public_ip = sh(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
+                    sh "ansible-playbook -i ${ec2_public_ip}, -u ${EC2_USER} --private-key ${EC2_PRIVATE_KEY} ansible-playbook.yml"
+                }
+            }
+        }
+
         stage('Docker Build & Push in Parallel') {
             parallel {
-                stage('Frontend Docker Build & Push') {
+                stage('Frontend') {
                     stages {
                         stage('Build Frontend Image') {
                             steps {
                                 script {
-                                    bat 'docker build -t pavithra0228/movieapp-frontend:%BUILD_NUMBER% ./movieapp-frontend'
+                                    sh 'docker build -t pavithra0228/movieapp-frontend:${BUILD_NUMBER} ./movieapp-frontend'
                                 }
                             }
                         }
@@ -43,8 +51,8 @@ pipeline {
                             steps {
                                 withCredentials([string(credentialsId: DOCKER_CREDENTIALS, variable: 'DOCKER_PASSWORD')]) {
                                     script {
-                                        bat "docker login -u ${DOCKER_USERNAME} -p %DOCKER_PASSWORD%"
-                                        bat 'docker push pavithra0228/movieapp-frontend:%BUILD_NUMBER%'
+                                        sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin"
+                                        sh 'docker push pavithra0228/movieapp-frontend:${BUILD_NUMBER}'
                                     }
                                 }
                             }
@@ -52,12 +60,12 @@ pipeline {
                     }
                 }
 
-                stage('Backend Docker Build & Push') {
+                stage('Backend') {
                     stages {
                         stage('Build Backend Image') {
                             steps {
                                 script {
-                                    bat 'docker build -t pavithra0228/movieapp-backend:%BUILD_NUMBER% ./movieapp-backend'
+                                    sh 'docker build -t pavithra0228/movieapp-backend:${BUILD_NUMBER} ./movieapp-backend'
                                 }
                             }
                         }
@@ -66,8 +74,8 @@ pipeline {
                             steps {
                                 withCredentials([string(credentialsId: DOCKER_CREDENTIALS, variable: 'DOCKER_PASSWORD')]) {
                                     script {
-                                        bat "docker login -u ${DOCKER_USERNAME} -p %DOCKER_PASSWORD%"
-                                        bat 'docker push pavithra0228/movieapp-backend:%BUILD_NUMBER%'
+                                        sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin"
+                                        sh 'docker push pavithra0228/movieapp-backend:${BUILD_NUMBER}'
                                     }
                                 }
                             }
@@ -80,14 +88,13 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    // Retrieve the public IP from Terraform output
                     def ec2_public_ip = sh(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
 
-                    // Copy docker-compose.yml to EC2 instance
-                    sh "scp -i ${EC2_PRIVATE_KEY_PATH} docker-compose.yml ${EC2_USER}@${ec2_public_ip}:/home/ubuntu/app/"
+                    // Copy docker-compose.yml to EC2
+                    sh "scp -o StrictHostKeyChecking=no -i ${EC2_PRIVATE_KEY} docker-compose.yml ${EC2_USER}@${ec2_public_ip}:/home/ubuntu/app/"
 
-                    // SSH to EC2 instance and run Docker Compose to start the containers
-                    sh "ssh -i ${EC2_PRIVATE_KEY_PATH} ${EC2_USER}@${ec2_public_ip} 'docker-compose up -d'"
+                    // SSH into EC2 and run Docker Compose
+                    sh "ssh -o StrictHostKeyChecking=no -i ${EC2_PRIVATE_KEY} ${EC2_USER}@${ec2_public_ip} 'cd /home/ubuntu/app && docker-compose up -d'"
                 }
             }
         }
