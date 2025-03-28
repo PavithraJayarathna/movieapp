@@ -19,8 +19,7 @@ pipeline {
         stage('Terraform Init and Apply') {
             steps {
                 script {
-                    sh 'terraform init'
-                    sh 'terraform apply -auto-approve'
+                    bat 'wsl sh -c "terraform init && terraform apply -auto-approve"'
                 }
             }
         }
@@ -32,7 +31,11 @@ pipeline {
                         stage('Build Frontend Image') {
                             steps {
                                 script {
-                                    sh 'docker build -t pavithra0228/movieapp-frontend:${BUILD_NUMBER} ./movieapp-frontend'
+                                    bat '''
+                                    wsl sh -c "
+                                    docker build -t pavithra0228/movieapp-frontend:${BUILD_NUMBER} ./movieapp-frontend
+                                    "
+                                    '''
                                 }
                             }
                         }
@@ -41,8 +44,12 @@ pipeline {
                             steps {
                                 withCredentials([string(credentialsId: 'my-docker-password', variable: 'DOCKER_PASSWORD')]) {
                                     script {
-                                        sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin"
-                                        sh 'docker push pavithra0228/movieapp-frontend:${BUILD_NUMBER}'
+                                        bat '''
+                                        wsl sh -c "
+                                        echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin &&
+                                        docker push pavithra0228/movieapp-frontend:${BUILD_NUMBER}
+                                        "
+                                        '''
                                     }
                                 }
                             }
@@ -55,7 +62,11 @@ pipeline {
                         stage('Build Backend Image') {
                             steps {
                                 script {
-                                    sh 'docker build -t pavithra0228/movieapp-backend:${BUILD_NUMBER} ./movieapp-backend'
+                                    bat '''
+                                    wsl sh -c "
+                                    docker build -t pavithra0228/movieapp-backend:${BUILD_NUMBER} ./movieapp-backend
+                                    "
+                                    '''
                                 }
                             }
                         }
@@ -64,8 +75,12 @@ pipeline {
                             steps {
                                 withCredentials([string(credentialsId: 'my-docker-password', variable: 'DOCKER_PASSWORD')]) {
                                     script {
-                                        sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin"
-                                        sh 'docker push pavithra0228/movieapp-backend:${BUILD_NUMBER}'
+                                        bat '''
+                                        wsl sh -c "
+                                        echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin &&
+                                        docker push pavithra0228/movieapp-backend:${BUILD_NUMBER}
+                                        "
+                                        '''
                                     }
                                 }
                             }
@@ -78,16 +93,19 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    def ec2_public_ip = sh(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
+                    def ec2_public_ip = bat(script: 'wsl sh -c "terraform output -raw ec2_public_ip"', returnStdout: true).trim()
                     if (!ec2_public_ip) {
                         error "EC2 instance IP not found. Terraform might have failed."
                     }
 
-                    // Copy docker-compose.yml to EC2
-                    sh "scp -o StrictHostKeyChecking=no -i ${EC2_PRIVATE_KEY} docker-compose.yml ${EC2_USER}@${ec2_public_ip}:/home/ubuntu/app/"
+                    echo "Deploying to EC2 at ${ec2_public_ip}"
 
-                    // SSH into EC2 and run Docker Compose
-                    sh "ssh -o StrictHostKeyChecking=no -i ${EC2_PRIVATE_KEY} ${EC2_USER}@${ec2_public_ip} 'cd /home/ubuntu/app && docker-compose up -d'"
+                    bat '''
+                    wsl sh -c "
+                    scp -o StrictHostKeyChecking=no -i ${EC2_PRIVATE_KEY} docker-compose.yml ${EC2_USER}@${ec2_public_ip}:/home/ubuntu/app/ &&
+                    ssh -o StrictHostKeyChecking=no -i ${EC2_PRIVATE_KEY} ${EC2_USER}@${ec2_public_ip} 'cd /home/ubuntu/app && docker-compose up -d'
+                    "
+                    '''
                 }
             }
         }
@@ -98,7 +116,7 @@ pipeline {
             echo 'Pipeline completed successfully!'
         }
         failure {
-            echo ' Pipeline failed! Check logs for errors.'
+            echo 'Pipeline failed! Check logs for errors.'
         }
     }
 }
