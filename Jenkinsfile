@@ -29,24 +29,24 @@ pipeline {
                 }
 
                 stage('Docker Login') {
-                    steps {
-                        withCredentials([usernamePassword(credentialsId: 'new-credential', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                            script {
-                                // Debugging step: Print Docker username and password (be careful in production!)
-                                echo "DOCKER_USERNAME: ${DOCKER_USERNAME}" // Debugging only!
-                                echo "DOCKER_PASSWORD: ${DOCKER_PASSWORD}" // Debugging only!
+    steps {
+        withCredentials([usernamePassword(credentialsId: 'new-credential', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+            script {
+                // Debugging step: Print Docker username and password (be careful in production!)
+                echo "DOCKER_USERNAME: ${DOCKER_USERNAME}" // Debugging only!
+                echo "DOCKER_PASSWORD: ********" // Masked password
 
-                                bat '''
-                                wsl sh -c "
-                                echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
-                                "
-                                '''
-                            }
-                        }
-                    }
-                }
+                // Ensure proper shell command execution and environment variable handling
+                bat '''
+                set DOCKER_USERNAME=%DOCKER_USERNAME%
+                set DOCKER_PASSWORD=%DOCKER_PASSWORD%
+                wsl sh -c "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
+                '''
             }
         }
+    }
+}
+
 
         stage('Docker Build & Push (Parallel)') {
             parallel {
