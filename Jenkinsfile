@@ -22,7 +22,7 @@ pipeline {
                     steps {
                         script {
                             bat '''
-                            wsl sh -c "cd terraform && terraform init && terraform apply -parallelism=10 -auto-approve"
+                            wsl -e bash -c "cd terraform && terraform init && terraform apply -parallelism=10 -auto-approve"
                             '''
                         }
                     }
