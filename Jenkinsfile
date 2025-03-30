@@ -29,7 +29,7 @@ pipeline {
                 stage('Docker Login') {
                     steps {
                         // Use the Jenkins credentials to inject DOCKER_USERNAME and DOCKER_PASSWORD
-                        withCredentials([usernamePassword(credentialsId: 'my-docker-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        withCredentials([usernamePassword(credentialsId: 'new-credential', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                             script {
                                 // Login to Docker using the credentials injected by Jenkins
                                 bat '''
