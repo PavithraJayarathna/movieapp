@@ -35,12 +35,10 @@ pipeline {
                                 echo "DOCKER_USERNAME: ${DOCKER_USERNAME}" // Debugging only!
                                 echo "DOCKER_PASSWORD: ********" // Masked password
 
-                                // Fix for non-interactive login
-                                bat '''
-                                set DOCKER_USERNAME=%DOCKER_USERNAME%
-                                set DOCKER_PASSWORD=%DOCKER_PASSWORD%
-                                wsl -e bash -c "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
-                                '''
+                                // Fix for non-interactive login using Docker login in WSL
+                                sh """
+                                echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin
+                                """
                             }
                         }
                     }
