@@ -21,6 +21,8 @@ pipeline {
                 stage('Terraform Init & Apply') {
                     steps {
                         script {
+                            // Logging to debug Terraform execution
+                            echo "Starting Terraform Init & Apply"
                             bat '''
                             wsl -e bash -c "cd terraform && terraform init && terraform apply -parallelism=10 -auto-approve"
                             '''
@@ -35,10 +37,10 @@ pipeline {
                                 echo "DOCKER_USERNAME: ${DOCKER_USERNAME}" // Debugging only!
                                 echo "DOCKER_PASSWORD: ********" // Masked password
 
-                                // Fix for non-interactive login using Docker login in WSL
-                                sh """
-                                echo \$DOCKER_PASSWORD | docker login -u \$DOCKER_USERNAME --password-stdin
-                                """
+                                // Fix for non-interactive login using Docker login
+                                sh '''
+                                echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                                '''
                             }
                         }
                     }
@@ -79,6 +81,7 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
+                    // Get EC2 IP and deploy
                     def ec2_public_ip = bat(script: 'wsl sh -c "terraform output -raw ec2_public_ip"', returnStdout: true).trim()
                     if (!ec2_public_ip) {
                         error "EC2 instance IP not found. Terraform might have failed."
