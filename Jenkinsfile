@@ -21,7 +21,6 @@ pipeline {
                 stage('Terraform Init & Apply') {
                     steps {
                         script {
-                            // Ensure shell command syntax is correct
                             bat '''
                             wsl sh -c "cd terraform && terraform init && terraform apply -parallelism=10 -auto-approve"
                             '''
@@ -33,7 +32,10 @@ pipeline {
                     steps {
                         withCredentials([usernamePassword(credentialsId: 'new-credential', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                             script {
-                                // Ensure Docker login is correct
+                                // Debugging step: Print Docker username and password (be careful in production!)
+                                echo "DOCKER_USERNAME: ${DOCKER_USERNAME}" // Debugging only!
+                                echo "DOCKER_PASSWORD: ${DOCKER_PASSWORD}" // Debugging only!
+
                                 bat '''
                                 wsl sh -c "
                                 echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
