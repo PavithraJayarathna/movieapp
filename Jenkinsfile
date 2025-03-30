@@ -21,17 +21,19 @@ pipeline {
                 stage('Terraform Init & Apply') {
                     steps {
                         script {
-                            bat 'wsl sh -c "cd terraform && terraform init && terraform apply -parallelism=10 -auto-approve"'
+                            // Ensure shell command syntax is correct
+                            bat '''
+                            wsl sh -c "cd terraform && terraform init && terraform apply -parallelism=10 -auto-approve"
+                            '''
                         }
                     }
                 }
 
                 stage('Docker Login') {
                     steps {
-                        // Use the Jenkins credentials to inject DOCKER_USERNAME and DOCKER_PASSWORD
                         withCredentials([usernamePassword(credentialsId: 'new-credential', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                             script {
-                                // Login to Docker using the credentials injected by Jenkins
+                                // Ensure Docker login is correct
                                 bat '''
                                 wsl sh -c "
                                 echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
