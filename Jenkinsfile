@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     environment {
-        // These will be injected by Jenkins from the credentials store
-        EC2_PRIVATE_KEY = credentials('aws-ec2-key') // AWS EC2 private key
+        EC2_PRIVATE_KEY = credentials('aws-ec2-key')  // AWS EC2 private key
         EC2_USER = 'ubuntu'
     }
 
@@ -21,24 +20,23 @@ pipeline {
                 stage('Terraform Init & Apply') {
                     steps {
                         script {
-                            // Logging to debug Terraform execution
                             echo "Starting Terraform Init & Apply"
-                            // Running Terraform init and apply using Git Bash
-                            bat '"C:\\Program Files\\Git\\bin\\bash.exe" -c "cd terraform && terraform init && terraform apply -parallelism=10 -auto-approve"'
+                            sh 'wsl bash -c "cd terraform && terraform init && terraform apply -parallelism=10 -auto-approve"'
                         }
                     }
                 }
 
                 stage('Docker Login') {
                     steps {
-                        withCredentials([usernamePassword(credentialsId: 'new-credential', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        withCredentials([usernamePassword(credentialsId: 'docker-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                             script {
-                                echo "DOCKER_USERNAME: ${DOCKER_USERNAME}" // Debugging only!
-                                echo "DOCKER_PASSWORD: ********" // Masked password
+                                // Debugging to ensure environment variables are passed correctly
+                                echo "DOCKER_USERNAME: ${DOCKER_USERNAME}" // Prints the username for verification
+                                echo "DOCKER_PASSWORD: ********" // Password is masked, for security reasons
 
-                                // Docker login in non-interactive mode inside Git Bash
-                                bat '''
-                                echo $DOCKER_PASSWORD | "C:\\Program Files\\Git\\bin\\bash.exe" -c "docker login -u $DOCKER_USERNAME --password-stdin"
+                                // Docker login using injected environment variables
+                                sh '''
+                                echo $DOCKER_PASSWORD | wsl docker login -u $DOCKER_USERNAME --password-stdin
                                 '''
                             }
                         }
@@ -47,14 +45,15 @@ pipeline {
             }
         }
 
+        // Docker Build & Push and other stages
         stage('Docker Build & Push (Parallel)') {
             parallel {
                 stage('Build & Push Frontend') {
                     steps {
                         script {
-                            // Running frontend Docker build & push using Git Bash
-                            bat '''
-                            "C:\\Program Files\\Git\\bin\\bash.exe" -c "
+                            // Running frontend Docker build & push in WSL
+                            sh '''
+                            wsl bash -c "
                             docker build --cache-from=pavithra0228/movieapp-frontend:latest -t pavithra0228/movieapp-frontend:${BUILD_NUMBER} ./movieapp-frontend &&
                             docker push pavithra0228/movieapp-frontend:${BUILD_NUMBER}
                             "
@@ -66,9 +65,9 @@ pipeline {
                 stage('Build & Push Backend') {
                     steps {
                         script {
-                            // Running backend Docker build & push using Git Bash
-                            bat '''
-                            "C:\\Program Files\\Git\\bin\\bash.exe" -c "
+                            // Running backend Docker build & push in WSL
+                            sh '''
+                            wsl bash -c "
                             docker build --cache-from=pavithra0228/movieapp-backend:latest -t pavithra0228/movieapp-backend:${BUILD_NUMBER} ./movieapp-backend &&
                             docker push pavithra0228/movieapp-backend:${BUILD_NUMBER}
                             "
@@ -82,17 +81,17 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    // Get EC2 IP and deploy using Git Bash
-                    def ec2_public_ip = bat(script: '"C:\\Program Files\\Git\\bin\\bash.exe" -c "terraform output -raw ec2_public_ip"', returnStdout: true).trim()
+                    // Get EC2 IP and deploy
+                    def ec2_public_ip = sh(script: 'wsl bash -c "terraform output -raw ec2_public_ip"', returnStdout: true).trim()
                     if (!ec2_public_ip) {
                         error "EC2 instance IP not found. Terraform might have failed."
                     }
 
                     echo "Deploying to EC2 at ${ec2_public_ip}"
 
-                    // SSH and deploy Docker Compose on EC2 instance using Git Bash
-                    bat '''
-                    "C:\\Program Files\\Git\\bin\\bash.exe" -c "
+                    // SSH and deploy Docker Compose on EC2 instance
+                    sh '''
+                    wsl bash -c "
                     ssh -o StrictHostKeyChecking=no -i ${EC2_PRIVATE_KEY} ${EC2_USER}@${ec2_public_ip} '
                     docker-compose pull &&
                     docker-compose up -d --force-recreate
