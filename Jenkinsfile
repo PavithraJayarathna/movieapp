@@ -2,9 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_USERNAME = 'pavithra0228'
-        DOCKER_PASSWORD = credentials('my-docker-password')  // Ensure this credential exists in Jenkins
-        EC2_PRIVATE_KEY = credentials('aws-ec2-key')
+        // These will be injected by Jenkins from the credentials store
+        EC2_PRIVATE_KEY = credentials('aws-ec2-key') // AWS EC2 private key
         EC2_USER = 'ubuntu'
     }
 
@@ -26,10 +25,13 @@ pipeline {
                         }
                     }
                 }
+
                 stage('Docker Login') {
                     steps {
-                        withCredentials([string(credentialsId: 'my-docker-password', variable: 'DOCKER_PASSWORD')]) {
+                        // Use the Jenkins credentials to inject DOCKER_USERNAME and DOCKER_PASSWORD
+                        withCredentials([usernamePassword(credentialsId: 'my-docker-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                             script {
+                                // Login to Docker using the credentials injected by Jenkins
                                 bat '''
                                 wsl sh -c "
                                 echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
