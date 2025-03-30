@@ -39,7 +39,7 @@ pipeline {
                                 bat '''
                                 set DOCKER_USERNAME=%DOCKER_USERNAME%
                                 set DOCKER_PASSWORD=%DOCKER_PASSWORD%
-                                wsl sh -c "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
+                                wsl -e bash -c "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
                                 '''
                             }
                         }
