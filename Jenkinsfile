@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        EC2_PRIVATE_KEY = credentials('aws-ec2-key')  // AWS EC2 private key
         EC2_USER = 'ubuntu'
     }
 
@@ -80,12 +79,14 @@ pipeline {
 
                     echo "Deploying to EC2 at ${ec2_public_ip}"
 
-                    // Deploy Docker Compose on EC2 using Windows SSH
-                    bat """
-                    echo Deploying to EC2...
-                    echo y | plink -i %EC2_PRIVATE_KEY% %EC2_USER%@${ec2_public_ip} ^
-                    "docker-compose pull && docker-compose up -d --force-recreate"
-                    """
+                    // Securely fetch the private key from Jenkins credentials
+                    withCredentials([file(credentialsId: 'my_new_ec2_key', variable: 'EC2_PRIVATE_KEY_PATH')]) {
+                        bat """
+                        echo Deploying to EC2...
+                        echo y | plink -i %EC2_PRIVATE_KEY_PATH% %EC2_USER%@${ec2_public_ip} ^
+                        "docker-compose pull && docker-compose up -d --force-recreate"
+                        """
+                    }
                 }
             }
         }
