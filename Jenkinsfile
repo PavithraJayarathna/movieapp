@@ -81,7 +81,7 @@ pipeline {
                         bat """
                         echo Deploying to EC2...
                         echo "EC2 Private Key Path: %EC2_PRIVATE_KEY_PATH%"
-                        if not exist "%EC2_PRIVATE_KEY_PATH%" echo ERROR: Private key file not found!
+                        echo "%EC2_PRIVATE_KEY_PATH%"
                         """
                     } 
 
