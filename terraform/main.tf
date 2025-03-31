@@ -30,7 +30,7 @@ resource "aws_security_group" "movieapp_sg" {
 resource "aws_instance" "movieapp" {
   ami                    = "ami-071226ecf16aa7d96"
   instance_type          = "t2.micro"
-  key_name               = "my_new_pemfile"
+  key_name               = "my_new_ppk_file"
   security_groups        = [aws_security_group.movieapp_sg.name]
 
   lifecycle {
