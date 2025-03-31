@@ -78,17 +78,21 @@ pipeline {
 
                     echo "Deploying to EC2 at ${ec2_public_ip}"
 
+                    // Define EC2 user as 'ubuntu' (since you're using Ubuntu on EC2)
+                    def ec2_user = 'ubuntu'
+
                     // Securely fetch the private key from Jenkins credentials
                     withCredentials([file(credentialsId: 'my_new_ppk_file.ppk', variable: 'EC2_PRIVATE_KEY_PATH')]) {
                         bat """
                         echo Deploying to EC2...
-                        echo y | plink -i %EC2_PRIVATE_KEY_PATH% %EC2_USER%@${ec2_public_ip} ^
+                        echo y | plink -i %EC2_PRIVATE_KEY_PATH% %ec2_user%@${ec2_public_ip} ^
                         "docker-compose pull && docker-compose up -d --force-recreate"
                         """
                     }
                 }
             }
         }
+
     }
 
     post {
