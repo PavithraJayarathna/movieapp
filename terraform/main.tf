@@ -28,9 +28,9 @@ resource "aws_security_group" "movieapp_sg" {
 }
 
 resource "aws_instance" "movieapp" {
-  ami                    = "ami-04b4f1a9cf54c11d0"
+  ami                    = "ami-071226ecf16aa7d96"
   instance_type          = "t2.micro"
-  key_name               = "movie_app_new"
+  key_name               = "my_new_pemfile"
   security_groups        = [aws_security_group.movieapp_sg.name]
 
   lifecycle {
@@ -46,7 +46,7 @@ resource "aws_instance" "movieapp" {
               EOF
 
   tags = {
-    Name = "movieapp-api"
+    Name = "MovieEc2"
   }
 }
 
