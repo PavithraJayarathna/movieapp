@@ -81,14 +81,14 @@ pipeline {
                     def ec2_user = 'ubuntu'
 
                     // Securely fetch the private key from Jenkins credentials
-                    withCredentials([file(credentialsId: '72301343-8d2b-445b-b485-c377466ca495', variable: 'EC2_PRIVATE_KEY_PATH')]) {
+withCredentials([file(credentialsId: '72301343-8d2b-445b-b485-c377466ca495', variable: 'EC2_PRIVATE_KEY_PATH')]) {
     bat """
     echo Deploying to EC2...
 
     REM Install necessary dependencies for Docker Compose
     echo y | "C:\\Program Files\\PuTTY\\plink.exe" -i "%EC2_PRIVATE_KEY_PATH%" ec2-user@44.201.241.191 ^
-    "sudo yum install -y libcrypt python3 && sudo ln -s /usr/bin/python3 /usr/bin/python"
-    
+    "sudo yum install -y glibc python3 && sudo ln -s /lib64/libcrypt.so.2 /lib64/libcrypt.so.1"
+
     REM Now install Docker Compose if not already installed
     echo y | "C:\\Program Files\\PuTTY\\plink.exe" -i "%EC2_PRIVATE_KEY_PATH%" ec2-user@44.201.241.191 ^
     "sudo curl -L \"https://github.com/docker/compose/releases/download/1.29.2/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose && sudo chmod +x /usr/local/bin/docker-compose && docker-compose --version"
@@ -98,6 +98,7 @@ pipeline {
     "docker-compose pull && docker-compose up -d --force-recreate"
     """
 }
+
 
 
                 }
