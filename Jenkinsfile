@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        EC2_USER = 'ubuntu'
+        EC2_USER = 'ec2-user'
     }
 
     stages {
