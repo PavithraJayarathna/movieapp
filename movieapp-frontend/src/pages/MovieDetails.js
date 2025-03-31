@@ -12,7 +12,7 @@ const MovieDetails = () => {
   useEffect(() => {
     const fetchMovieDetails = async () => {
       try {
-        const response = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${id}&plot=full`);
+        const response = await fetch(`https://www.omdbapi.com/?apikey=PP${OMDB_API_KEY}&i=${id}&plot=full`);
         const data = await response.json();
         setMovie(data);
       } catch (error) {
@@ -25,28 +25,28 @@ const MovieDetails = () => {
   }, [id]);
 
   if (loading) {
-    return <p className="text-white text-center mt-10">Loading movie details...</p>;
+    return <p className="mt-10 text-center text-white">Loading movie details...</p>;
   }
 
   if (!movie || movie.Response === "False") {
-    return <p className="text-white text-center mt-10">Movie not found.</p>;
+    return <p className="mt-10 text-center text-white">Movie not found.</p>;
   }
 
   return (
     <div className="bg-[#04091d] min-h-screen text-white px-4 sm:px-6 lg:px-36 py-10">
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white"
+        className="px-4 py-2 mb-6 text-white bg-gray-700 rounded-lg hover:bg-gray-600"
       >
         ← Go Back
       </button>
 
-      <div className="flex flex-col md:flex-row items-center gap-8">
+      <div className="flex flex-col items-center gap-8 md:flex-row">
         {/* Movie Poster */}
         <img
           src={movie.Poster}
           alt={movie.Title}
-          className="w-64 md:w-96 rounded-lg shadow-lg"
+          className="w-64 rounded-lg shadow-lg md:w-96"
         />
 
         {/* Movie Details */}
@@ -81,8 +81,8 @@ const MovieDetails = () => {
             <h2 className="text-xl font-semibold">Ratings</h2>
             <div className="flex flex-wrap gap-4 mt-2">
               {movie.Ratings.map((rating, index) => (
-                <div key={index} className="bg-gray-800 p-2 rounded-lg">
-                  <p className="text-yellow-400 font-semibold">{rating.Source}</p>
+                <div key={index} className="p-2 bg-gray-800 rounded-lg">
+                  <p className="font-semibold text-yellow-400">{rating.Source}</p>
                   <p>{rating.Value}</p>
                 </div>
               ))}
