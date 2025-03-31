@@ -21,7 +21,7 @@ pipeline {
                     steps {
                         script {
                             echo "Starting Terraform Init & Apply"
-                            sh 'wsl bash -c "cd terraform && terraform init && terraform apply -parallelism=10 -auto-approve"'
+                            bat 'wsl bash -c "cd terraform && terraform init && terraform apply -parallelism=10 -auto-approve"'
                         }
                     }
                 }
@@ -35,7 +35,7 @@ pipeline {
                                 echo "DOCKER_PASSWORD: ********" // Password is masked, for security reasons
 
                                 // Docker login using injected environment variables
-                                sh '''
+                                bat '''
                                 echo $DOCKER_PASSWORD | wsl docker login -u $DOCKER_USERNAME --password-stdin
                                 '''
                             }
@@ -52,7 +52,7 @@ pipeline {
                     steps {
                         script {
                             // Running frontend Docker build & push in WSL
-                            sh '''
+                            bat '''
                             wsl bash -c "
                             docker build --cache-from=pavithra0228/movieapp-frontend:latest -t pavithra0228/movieapp-frontend:${BUILD_NUMBER} ./movieapp-frontend &&
                             docker push pavithra0228/movieapp-frontend:${BUILD_NUMBER}
@@ -66,7 +66,7 @@ pipeline {
                     steps {
                         script {
                             // Running backend Docker build & push in WSL
-                            sh '''
+                            bat '''
                             wsl bash -c "
                             docker build --cache-from=pavithra0228/movieapp-backend:latest -t pavithra0228/movieapp-backend:${BUILD_NUMBER} ./movieapp-backend &&
                             docker push pavithra0228/movieapp-backend:${BUILD_NUMBER}
@@ -82,7 +82,7 @@ pipeline {
             steps {
                 script {
                     // Get EC2 IP and deploy
-                    def ec2_public_ip = sh(script: 'wsl bash -c "terraform output -raw ec2_public_ip"', returnStdout: true).trim()
+                    def ec2_public_ip = bat(script: 'wsl bash -c "terraform output -raw ec2_public_ip"', returnStdout: true).trim()
                     if (!ec2_public_ip) {
                         error "EC2 instance IP not found. Terraform might have failed."
                     }
@@ -90,7 +90,7 @@ pipeline {
                     echo "Deploying to EC2 at ${ec2_public_ip}"
 
                     // SSH and deploy Docker Compose on EC2 instance
-                    sh '''
+                    bat '''
                     wsl bash -c "
                     ssh -o StrictHostKeyChecking=no -i ${EC2_PRIVATE_KEY} ${EC2_USER}@${ec2_public_ip} '
                     docker-compose pull &&
