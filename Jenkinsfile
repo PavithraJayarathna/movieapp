@@ -84,7 +84,7 @@ pipeline {
                     withCredentials([file(credentialsId: '72301343-8d2b-445b-b485-c377466ca495', variable: 'EC2_PRIVATE_KEY_PATH')]) {
                         bat """
                         echo Deploying to EC2...
-                        echo y | "C:\\Program Files\\PuTTY\\plink.exe" -i 72301343-8d2b-445b-b485-c377466ca495 ubuntu@44.201.241.191 ^
+                        echo y | "C:\\Program Files\\PuTTY\\plink.exe" -i 72301343-8d2b-445b-b485-c377466ca495 ec2-user@44.201.241.191 ^
                         "docker-compose pull && docker-compose up -d --force-recreate"
                         """
                     }
