@@ -28,7 +28,7 @@ pipeline {
 
                 stage('Docker Login') {
                     steps {
-                        withCredentials([usernamePassword(credentialsId: 'docker-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        withCredentials([usernamePassword(credentialsId: 'new-credential', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                             script {
                                 // Debugging to ensure environment variables are passed correctly
                                 echo "DOCKER_USERNAME: ${DOCKER_USERNAME}" // Prints the username for verification
