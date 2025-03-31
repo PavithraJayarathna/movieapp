@@ -79,7 +79,7 @@ pipeline {
                     echo "Deploying to EC2 at ${ec2_public_ip}"
 
                     // Securely fetch the private key from Jenkins credentials
-                    withCredentials([file(credentialsId: 'my_new_ec2_key', variable: 'EC2_PRIVATE_KEY_PATH')]) {
+                    withCredentials([file(credentialsId: 'my_new_ppk_file.ppk', variable: 'EC2_PRIVATE_KEY_PATH')]) {
                         bat """
                         echo Deploying to EC2...
                         echo y | plink -i %EC2_PRIVATE_KEY_PATH% %EC2_USER%@${ec2_public_ip} ^
