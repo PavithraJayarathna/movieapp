@@ -85,7 +85,7 @@ pipeline {
                         bat """
                         echo Deploying to EC2...
                         echo y | "C:\\Program Files\\PuTTY\\plink.exe" -i "%EC2_PRIVATE_KEY_PATH%" ec2-user@44.201.241.191 ^
-                        "/c/Program Files/Docker/Docker/resources/bin/docker-compose pull && /c/Program Files/Docker/Docker/resources/bin/docker-compose up -d --force-recreate"
+                        "/usr/local/bin/docker-compose pull && /usr/local/bin/docker-compose up -d --force-recreate"
                         """
                     }
 
