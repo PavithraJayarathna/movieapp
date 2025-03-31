@@ -48,8 +48,8 @@ pipeline {
                     steps {
                         script {
                             sh '''
-                            docker build --cache-from=pavithra0228/movieapp-frontend:latest -t pavithra0228/movieapp-frontend:$BUILD_NUMBER ./movieapp-frontend
-                            docker push pavithra0228/movieapp-frontend:$BUILD_NUMBER
+                            winpty docker build --cache-from=pavithra0228/movieapp-frontend:latest -t pavithra0228/movieapp-frontend:$BUILD_NUMBER ./movieapp-frontend
+                            winpty docker push pavithra0228/movieapp-frontend:$BUILD_NUMBER
                             '''
                         }
                     }
@@ -59,8 +59,8 @@ pipeline {
                     steps {
                         script {
                             sh '''
-                            docker build --cache-from=pavithra0228/movieapp-backend:latest -t pavithra0228/movieapp-backend:$BUILD_NUMBER ./movieapp-backend
-                            docker push pavithra0228/movieapp-backend:$BUILD_NUMBER
+                            winpty docker build --cache-from=pavithra0228/movieapp-backend:latest -t pavithra0228/movieapp-backend:$BUILD_NUMBER ./movieapp-backend
+                            winpty docker push pavithra0228/movieapp-backend:$BUILD_NUMBER
                             '''
                         }
                     }
@@ -78,12 +78,11 @@ pipeline {
 
                     echo "Deploying to EC2 at ${ec2_public_ip}"
 
-                    // Securely fetch the private key from Jenkins credentials
                     withCredentials([file(credentialsId: '72301343-8d2b-445b-b485-c377466ca495', variable: 'EC2_PRIVATE_KEY_PATH')]) {
                         sh '''
                         echo "Deploying to EC2..."
                         chmod 400 $EC2_PRIVATE_KEY_PATH  # Ensure correct permissions
-                        ssh -o StrictHostKeyChecking=no -i $EC2_PRIVATE_KEY_PATH ubuntu@${ec2_public_ip} '
+                        winpty ssh -o StrictHostKeyChecking=no -i $EC2_PRIVATE_KEY_PATH ubuntu@${ec2_public_ip} '
                         docker-compose pull &&
                         docker-compose up -d --force-recreate
                         '
