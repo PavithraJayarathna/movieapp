@@ -31,14 +31,13 @@ pipeline {
 
                 stage('Docker Login') {
                     steps {
-                        withCredentials([usernamePassword(credentialsId: 'new-credential', usernameVariable: 'pavithra0228', passwordVariable: 'Jayarathna#28')]) {
-                            script {
-                                echo "Logging into Docker Hub"
-                                bat "docker login -u pavithra0228 -p Jayarathna#28"
-                            }
+                        withCredentials([usernamePassword(credentialsId: 'new-credential', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                            echo "Docker Username: ${DOCKER_USERNAME}"
+                            echo "Docker Password: ${DOCKER_PASSWORD}"
                         }
                     }
                 }
+
             }
         }
 
