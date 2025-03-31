@@ -35,7 +35,7 @@ pipeline {
                         withCredentials([usernamePassword(credentialsId: 'new-credential', usernameVariable: 'pavithra0228', passwordVariable: 'Jayarathna#28')]) {
                             script {
                                 echo "Logging into Docker Hub"
-                                bat "docker login -u %pavithra0228% -p %Jayarathna#28%"
+                                bat "docker login -u pavithra0228 -p Jayarathna#28"
                             }
                         }
                     }
