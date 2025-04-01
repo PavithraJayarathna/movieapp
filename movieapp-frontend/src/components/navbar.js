@@ -26,7 +26,7 @@ const Navbar = () => {
         return;
       }
       try {
-        const response = await fetch("http://localhost:8000/api/signup", {
+        const response = await fetch("http://3.93.185.27:8000/api/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, username, password }),
@@ -48,7 +48,7 @@ const Navbar = () => {
         return;
       }
       try {
-        const response = await fetch("http://localhost:8000/api/login", {
+        const response = await fetch("http://3.93.185.27:8000/api/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
@@ -86,7 +86,7 @@ const Navbar = () => {
           <div className="flex items-center justify-between h-16">
             
             {/* ✅ Fix: Use <Link> instead of <a href="/"> */}
-            <Link to="/" className="text-2xl font-semibold text-yellow-500 tracking-widest">
+            <Link to="/" className="text-2xl font-semibold tracking-widest text-yellow-500">
               CINE<span className="text-white">APP</span>
             </Link>
 
@@ -95,12 +95,12 @@ const Navbar = () => {
               <input
                 type="text"
                 placeholder="Search movies..."
-                className="w-full px-4 py-2 text-white bg-gray-900 border border-gray-700 rounded-full focus:ring-2 focus:ring-yellow-500 focus:outline-none pl-10"
+                className="w-full px-4 py-2 pl-10 text-white bg-gray-900 border border-gray-700 rounded-full focus:ring-2 focus:ring-yellow-500 focus:outline-none"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={handleSearch} // ✅ Fix: Search navigation
               />
-              <FaSearch className="absolute left-3 top-3 text-gray-400" />
+              <FaSearch className="absolute text-gray-400 left-3 top-3" />
             </div>
 
             {/* Auth Buttons */}
@@ -122,13 +122,13 @@ const Navbar = () => {
               ) : (
                 <>
                   <button
-                    className="px-4 py-2 text-sm font-semibold text-black bg-yellow-500 rounded-lg hover:bg-yellow-600 transition-all"
+                    className="px-4 py-2 text-sm font-semibold text-black transition-all bg-yellow-500 rounded-lg hover:bg-yellow-600"
                     onClick={() => { setIsModalOpen(true); setIsSignup(false); }}
                   >
                     Log in
                   </button>
                   <button
-                    className="px-4 py-2 text-sm font-semibold text-white bg-gray-700 rounded-lg hover:bg-gray-600 transition-all"
+                    className="px-4 py-2 text-sm font-semibold text-white transition-all bg-gray-700 rounded-lg hover:bg-gray-600"
                     onClick={() => { setIsModalOpen(true); setIsSignup(true); }}
                   >
                     Sign up
@@ -144,14 +144,14 @@ const Navbar = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div className="relative z-50 p-6 bg-[#04091d] border border-gray-700 rounded-xl shadow-2xl w-96">
-            <h2 className="mb-4 text-2xl font-semibold text-yellow-500 text-center">
+            <h2 className="mb-4 text-2xl font-semibold text-center text-yellow-500">
               {isSignup ? "Sign Up" : "Login"}
             </h2>
 
             <input
               type="text"
               placeholder="Email"
-              className="w-full px-4 py-3 bg-gray-900 text-white border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 mb-3"
+              className="w-full px-4 py-3 mb-3 text-white bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -160,7 +160,7 @@ const Navbar = () => {
               <input
                 type="text"
                 placeholder="Username"
-                className="w-full px-4 py-3 bg-gray-900 text-white border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 mb-3"
+                className="w-full px-4 py-3 mb-3 text-white bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
@@ -169,7 +169,7 @@ const Navbar = () => {
             <input
               type="password"
               placeholder="Password"
-              className="w-full px-4 py-3 bg-gray-900 text-white border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 mb-3"
+              className="w-full px-4 py-3 mb-3 text-white bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -178,17 +178,17 @@ const Navbar = () => {
               <input
                 type="password"
                 placeholder="Confirm Password"
-                className="w-full px-4 py-3 bg-gray-900 text-white border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 mb-4"
+                className="w-full px-4 py-3 mb-4 text-white bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
             )}
 
-            <button className="w-full py-3 text-black font-semibold bg-yellow-500 rounded-lg hover:bg-yellow-600 transition-all" onClick={handleAuth}>
+            <button className="w-full py-3 font-semibold text-black transition-all bg-yellow-500 rounded-lg hover:bg-yellow-600" onClick={handleAuth}>
               {isSignup ? "Sign Up" : "Log in"}
             </button>
 
-            <button className="w-full py-3 mt-3 text-white bg-gray-700 rounded-lg hover:bg-gray-600 transition-all" onClick={() => setIsModalOpen(false)}>
+            <button className="w-full py-3 mt-3 text-white transition-all bg-gray-700 rounded-lg hover:bg-gray-600" onClick={() => setIsModalOpen(false)}>
               Cancel
             </button>
           </div>
