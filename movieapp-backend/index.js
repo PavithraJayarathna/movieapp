@@ -31,6 +31,6 @@ mongoose.connect('mongodb+srv://madumalijayarathna09:Chanmadu@cluster0.ekd0ilq.m
 
 
 // Start server
-const PORT = process.env.PORT || 7000; // Use PORT from .env or fallback to 7000
+const PORT = process.env.PORT || 8000; // Use PORT from .env or fallback to 7000
 app.listen(PORT, () => {
 });
