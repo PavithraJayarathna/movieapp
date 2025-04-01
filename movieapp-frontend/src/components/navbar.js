@@ -26,7 +26,7 @@ const Navbar = () => {
         return;
       }
       try {
-        const response = await fetch("http://localhost:8000/api/signup", {
+        const response = await fetch("http://3.93.185.27:8000/api/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, username, password }),
@@ -48,7 +48,7 @@ const Navbar = () => {
         return;
       }
       try {
-        const response = await fetch("http://localhost:8000/api/login", {
+        const response = await fetch("http://3.93.185.27:8000/api/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
