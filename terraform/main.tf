@@ -27,7 +27,7 @@ resource "aws_security_group" "movieapp_sg" {
   }
 }
 
-resource "aws_instance" "movieapp" {
+resource "aws_instance" "MovieEc2" {
   ami                    = "ami-071226ecf16aa7d96"
   instance_type          = "t2.micro"
   key_name               = "my_new_ppk_file"
@@ -51,6 +51,6 @@ resource "aws_instance" "movieapp" {
 }
 
 output "ec2_public_ip" {
-  value       = aws_instance.movieapp.public_ip
+  value       = aws_instance.MovieEc2.public_ip
   description = "Public IP of the EC2 instance"
 }
