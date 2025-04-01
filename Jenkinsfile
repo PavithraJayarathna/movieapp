@@ -83,7 +83,7 @@ pipeline {
                         set PRIVATE_KEY_PATH=%EC2_PRIVATE_KEY_PATH%
                         echo Deploying to EC2...
                         echo y | "C:\\\\Program Files\\\\PuTTY\\\\plink.exe" -i %PRIVATE_KEY_PATH% ${EC2_USER}@3.93.185.27 ^
-                        "ls -l && docker-compose pull && docker-compose up -d --force-recreate"
+                        "cd /home/ec2-user/ && ls -l && docker-compose pull && docker-compose up -d --force-recreate"
                         """
                     }
 
