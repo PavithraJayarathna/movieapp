@@ -81,7 +81,7 @@ pipeline {
                     withCredentials([file(credentialsId: 'testing_id', variable: 'EC2_PRIVATE_KEY_PATH')]) {
                         bat """
                         set PRIVATE_KEY_PATH=%EC2_PRIVATE_KEY_PATH%
-                        echo Deploying to EC2...
+                        echo Deploying to EC2..
                         echo y | "C:\\\\Program Files\\\\PuTTY\\\\plink.exe" -i %PRIVATE_KEY_PATH% ${EC2_USER}@3.93.185.27 ^
                         "cd /home/ec2-user/ && ls -l && docker-compose pull && docker-compose up -d --force-recreate"
                         """
