@@ -1,6 +1,9 @@
 pipeline {
     agent any
     environment {
+
+         PYTHON_SCRIPTS = "C:\\Users\\pavit\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
+        PATH = "${env.PYTHON_SCRIPTS};${env.PATH}"
         // Static variables matching your Ansible config
         ANSIBLE_USER = 'ec2-user'
         DOCKER_REGISTRY = 'pavithra0228'
@@ -103,11 +106,17 @@ pipeline {
         stage('Run Ansible Playbook') {
             steps {
                 dir('ansible') {
-                    bat 'ansible-galaxy collection install community.docker'
+                    bat "\"${env.PYTHON_SCRIPTS}\\ansible-galaxy.exe\" collection install community.docker"
                     bat """
                     ansible-playbook ^
                       -i inventory.ini ^
                       deploy-movieapp.yml
+                    """
+
+                    bat """
+                    echo PATH: %PATH%
+                    where python
+                    where ansible-playbook
                     """
                 }
             }
