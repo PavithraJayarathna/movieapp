@@ -18,10 +18,10 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 dir('terraform') {
-                    sh 'terraform init'
-                    sh 'terraform apply -auto-approve'
+                    bat 'terraform init'
+                    bat 'terraform apply -auto-approve'
                     script {
-                        env.EC2_PUBLIC_IP = sh(
+                        env.EC2_PUBLIC_IP = bat(
                             script: 'terraform output -raw ec2_public_ip', 
                             returnStdout: true
                         ).trim()
@@ -39,21 +39,21 @@ pipeline {
                 script {
                     parallel(
                         frontend: {
-                            sh """
-                            docker build \
-                                --build-arg REACT_APP_API_URL=http://backend:8000 \
-                                -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} \
+                            bat """
+                            docker build ^
+                                --build-arg REACT_APP_API_URL=http://backend:8000 ^
+                                -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^
                                 ./movieapp-frontend
                             echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
                             """
                         },
                         backend: {
-                            sh """
-                            docker build \
-                                --build-arg PORT=8000 \
-                                --build-arg MONGO_URI=mongodb://mongo:27017/movies \
-                                -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} \
+                            bat """
+                            docker build ^
+                                --build-arg PORT=8000 ^
+                                --build-arg MONGO_URI=mongodb://mongo:27017/movies ^
+                                -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^
                                 ./movieapp-backend
                             echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
@@ -64,7 +64,7 @@ pipeline {
             }
         }
 
-        /* STAGE 4: Ansible Deployment */
+        /* STAGE 4: Ansible Setup */
         stage('Ansible Setup') {
             steps {
                 dir('ansible') {
@@ -82,9 +82,10 @@ pipeline {
                     
                     // Handle SSH key securely
                     withCredentials([file(credentialsId: 'ec2-ssh-key', variable: 'SSH_KEY')]) {
-                        sh """
-                        cp ${SSH_KEY} keys/deploy_key.pem
-                        chmod 400 keys/deploy_key.pem
+                        bat """
+                        copy ${SSH_KEY} keys\\deploy_key.pem
+                        icacls keys\\deploy_key.pem /inheritance:r
+                        icacls keys\\deploy_key.pem /grant:r "%USERNAME%":(R)
                         """
                     }
                 }
@@ -95,10 +96,10 @@ pipeline {
         stage('Run Ansible Playbook') {
             steps {
                 dir('ansible') {
-                    sh 'ansible-galaxy collection install community.docker'
-                    sh """
-                    ansible-playbook \
-                      -i inventory.ini \
+                    bat 'ansible-galaxy collection install community.docker'
+                    bat """
+                    ansible-playbook ^
+                      -i inventory.ini ^
                       deploy-movieapp.yml
                     """
                 }
@@ -107,7 +108,7 @@ pipeline {
     }
     post {
         always {
-            sh 'docker logout || true'
+            bat 'docker logout || echo "Already logged out"'
             cleanWs()
         }
         success {
