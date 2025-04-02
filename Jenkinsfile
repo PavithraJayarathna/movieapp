@@ -103,12 +103,13 @@ pipeline {
         /* STAGE 5: Ansible Execution */
         stage('Run Ansible Playbook') {
             steps {
-                 bat """
-            docker run --rm -v "%cd%:/ansible" -w /ansible alpine/ansible sh -c "
-                ansible-galaxy collection install community.docker
-                ansible-playbook -i inventory.ini deploy-movieapp.yml
-            "
-            """
+                script {
+                    bat """
+                    docker run --rm -v "%cd%:/ansible" -w /ansible alpine/ansible sh -c "
+                        ansible-galaxy collection install community.docker
+                        ansible-playbook -i inventory.ini deploy-movieapp.yml
+                    "
+                    """
                 }
             }
         }
