@@ -37,6 +37,9 @@ pipeline {
             }
             steps {
                 script {
+                    bat """
+                echo %DOCKER_CREDS_PSW% | docker login -u %DOCKER_CREDS_USR% --password-stdin
+            """
                     parallel(
                         frontend: {
                             bat """
