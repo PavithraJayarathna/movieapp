@@ -33,6 +33,12 @@ pipeline {
             }
             steps {
                 script {
+                    // First authenticate with Docker Hub
+                    bat """
+                    docker login -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}
+                    """
+                    
+                    // Then run builds and pushes
                     parallel(
                         frontend: {
                             bat """
@@ -40,7 +46,6 @@ pipeline {
                                 --build-arg REACT_APP_API_URL=http://backend:8000 ^
                                 -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^
                                 ./movieapp-frontend
-                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
                             """
                         },
@@ -51,7 +56,6 @@ pipeline {
                                 --build-arg MONGO_URI=mongodb://mongo:27017/movies ^
                                 -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^
                                 ./movieapp-backend
-                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
                             """
                         }
@@ -74,7 +78,6 @@ pipeline {
                     build_number=${BUILD_NUMBER}
                     """
                     
-                    // Updated to use SSH Username with private key
                     withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
                         bat """
                         if not exist keys mkdir keys
