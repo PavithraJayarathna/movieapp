@@ -104,24 +104,13 @@ pipeline {
 
         /* STAGE 5: Ansible Execution */
         stage('Run Ansible Playbook') {
-            steps {
-                dir('ansible') {
-                    bat "\"${env.PYTHON_SCRIPTS}\\ansible-galaxy.exe\" collection install community.docker"
-                    bat """
-                    ansible-playbook ^
-                      -i inventory.ini ^
-                      deploy-movieapp.yml
-                    """
-
-                    bat """
-                    echo PATH: %PATH%
-                    where python
-                    where ansible-playbook
-                    """
-                }
-            }
+    steps {
+        dir('ansible') {
+            wsl 'ansible-galaxy collection install community.docker'
+            wsl 'ansible-playbook -i inventory.ini deploy-movieapp.yml'
         }
     }
+}
     post {
         always {
             bat 'docker logout || echo "Already logged out"'
