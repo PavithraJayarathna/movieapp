@@ -112,7 +112,7 @@ pipeline {
                 }
             }
         }
-    } // <-- THIS WAS MISSING (closes the 'stages' block)
+    }
 
     post {
         always {
