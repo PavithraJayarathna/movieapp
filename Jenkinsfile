@@ -79,7 +79,7 @@ pipeline {
 
                     [movieapp_servers:vars]
                     ansible_user=${ANSIBLE_USER}
-                    ansible_ssh_private_key_file=${WORKSPACE}/ansible/keys/deploy_key.pem
+                    ansible_ssh_private_key_file=/ansible/keys/deploy_key.pem
                     ansible_python_interpreter=/usr/bin/python3
                     build_number=${BUILD_NUMBER}
                     """
@@ -103,13 +103,41 @@ pipeline {
         /* STAGE 5: Ansible Execution */
         stage('Run Ansible Playbook') {
             steps {
-                script {
-                    bat """
-                    docker run --rm -v "%cd%:/ansible" -w /ansible alpine/ansible sh -c "
-                        ansible-galaxy collection install community.docker
-                        ansible-playbook -i inventory.ini deploy-movieapp.yml
-                    "
-                    """
+                dir('ansible') {
+                    powershell '''
+                        $ErrorActionPreference = "Stop"
+                        try {
+                            # Debug: Show directory structure
+                            Write-Host "## Current directory structure ##"
+                            tree /F
+                            
+                            # Debug: Show inventory file
+                            Write-Host "## Inventory file content ##"
+                            Get-Content inventory.ini
+                            
+                            # Convert Windows path to Linux-style for Docker
+                            $ansiblePath = (Get-Location).Path.Replace('\','/')
+                            
+                            Write-Host "## Starting Ansible in Docker ##"
+                            docker run --rm `
+                                -v "${ansiblePath}:/ansible" `
+                                -w /ansible `
+                                -e ANSIBLE_HOST_KEY_CHECKING=False `
+                                alpine/ansible `
+                                sh -c "chmod 600 /ansible/keys/deploy_key.pem && 
+                                      ansible-galaxy collection install community.docker && 
+                                      ansible-playbook -i inventory.ini deploy-movieapp.yml -vvv"
+                            
+                            if ($LASTEXITCODE -ne 0) { 
+                                throw "Ansible failed with exit code $LASTEXITCODE" 
+                            }
+                            Write-Host "## Ansible completed successfully ##"
+                        } catch {
+                            Write-Error "## Ansible deployment failed ##"
+                            Write-Error $_
+                            exit 1
+                        }
+                    '''
                 }
             }
         }
@@ -122,9 +150,12 @@ pipeline {
         }
         success {
             echo "Successfully deployed to ${env.EC2_PUBLIC_IP}"
+            echo "Frontend: http://${env.EC2_PUBLIC_IP}:3000"
+            echo "Backend: http://${env.EC2_PUBLIC_IP}:8000"
         }
         failure {
             echo "Pipeline failed - check logs"
+            archiveArtifacts artifacts: 'ansible/**/*.log', allowEmptyArchive: true
         }
     }
 }
