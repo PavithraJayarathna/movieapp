@@ -84,12 +84,16 @@ pipeline {
                     """
                     
                     // Handle SSH key securely
-                    withCredentials([file(credentialsId: 'ec2-ssh-key', variable: 'SSH_KEY')]) {
-                        bat """
-                        copy ${SSH_KEY} keys\\deploy_key.pem
-                        icacls keys\\deploy_key.pem /inheritance:r
-                        icacls keys\\deploy_key.pem /grant:r "%USERNAME%":(R)
-                        """
+            withCredentials([sshUserPrivateKey(
+                credentialsId: 'ec2-ssh-key',
+                keyFileVariable: 'SSH_KEY'
+            )]) {
+                bat """
+                if not exist keys mkdir keys
+                copy "${SSH_KEY}" "keys\\deploy_key.pem"
+                icacls "keys\\deploy_key.pem" /inheritance:r
+                icacls "keys\\deploy_key.pem" /grant:r "%USERNAME%":(R)
+                """
                     }
                 }
             }
