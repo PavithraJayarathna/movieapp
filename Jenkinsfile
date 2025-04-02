@@ -117,19 +117,22 @@ pipeline {
                                 "${!playbookExists ? 'deploy-movieapp.yml' : ''}")
                         }
 
-                        // 2. Use a working Docker image with proper Ansible version
+                        // 2. Use a reliable Docker image with pre-installed Ansible
                         withCredentials([sshUserPrivateKey(
                             credentialsId: 'ec2-ssh-key',
                             keyFileVariable: 'SSH_KEY'
                         )]) {
+                            // Primary Option: Using Ubuntu with Ansible
                             bat """
                             docker run --rm ^
                                 -v "%cd%:/ansible" ^
                                 -w /ansible ^
                                 -e ANSIBLE_HOST_KEY_CHECKING=False ^
-                                ghcr.io/ansible/ansible-runner:latest ^
+                                ubuntu:22.04 ^
                                 sh -c "\
-                                    apk add --no-cache openssh-client && \
+                                    apt-get update -qq && \
+                                    apt-get install -y -qq ansible openssh-client python3-pip && \
+                                    pip install -q docker && \
                                     mkdir -p /root/.ssh && \
                                     cp /ansible/keys/deploy_key.pem /root/.ssh/id_rsa && \
                                     chmod 600 /root/.ssh/id_rsa && \
