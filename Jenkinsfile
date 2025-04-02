@@ -1,10 +1,12 @@
 pipeline {
     agent any
     environment {
+        // Static variables matching your Ansible config
         ANSIBLE_USER = 'ec2-user'
         DOCKER_REGISTRY = 'pavithra0228'
     }
     stages {
+        /* STAGE 1: Code Checkout */
         stage('SCM Checkout') {
             steps {
                 git branch: 'pavinew', 
@@ -12,6 +14,7 @@ pipeline {
             }
         }
 
+        /* STAGE 2: Terraform Deployment */
         stage('Terraform Apply') {
             steps {
                 dir('terraform') {
@@ -27,18 +30,13 @@ pipeline {
             }
         }
 
+        /* STAGE 3: Docker Build & Push */
         stage('Docker Operations') {
             environment {
                 DOCKER_CREDS = credentials('docker-hub-creds')
             }
             steps {
                 script {
-                    // First authenticate with Docker Hub
-                    bat """
-                    docker login -u ${DOCKER_CREDS_USR} -p ${DOCKER_CREDS_PSW}
-                    """
-                    
-                    // Then run builds and pushes
                     parallel(
                         frontend: {
                             bat """
@@ -46,6 +44,7 @@ pipeline {
                                 --build-arg REACT_APP_API_URL=http://backend:8000 ^
                                 -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^
                                 ./movieapp-frontend
+                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
                             """
                         },
@@ -56,6 +55,7 @@ pipeline {
                                 --build-arg MONGO_URI=mongodb://mongo:27017/movies ^
                                 -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^
                                 ./movieapp-backend
+                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
                             """
                         }
@@ -64,9 +64,11 @@ pipeline {
             }
         }
 
+        /* STAGE 4: Ansible Setup */
         stage('Ansible Setup') {
             steps {
                 dir('ansible') {
+                    // Generate inventory.ini exactly as specified
                     writeFile file: 'inventory.ini', text: """
                     [movieapp_servers]
                     ${env.EC2_PUBLIC_IP}
@@ -78,18 +80,19 @@ pipeline {
                     build_number=${BUILD_NUMBER}
                     """
                     
-                    withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
+                    // Handle SSH key securely
+                    withCredentials([file(credentialsId: 'ec2-ssh-key', variable: 'SSH_KEY')]) {
                         bat """
-                        if not exist keys mkdir keys
-                        copy "${SSH_KEY}" "keys\\deploy_key.pem"
-                        icacls "keys\\deploy_key.pem" /inheritance:r
-                        icacls "keys\\deploy_key.pem" /grant:r "%USERNAME%":(R)
+                        copy ${SSH_KEY} keys\\deploy_key.pem
+                        icacls keys\\deploy_key.pem /inheritance:r
+                        icacls keys\\deploy_key.pem /grant:r "%USERNAME%":(R)
                         """
                     }
                 }
             }
         }
 
+        /* STAGE 5: Ansible Execution */
         stage('Run Ansible Playbook') {
             steps {
                 dir('ansible') {
