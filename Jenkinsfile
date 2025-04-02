@@ -9,8 +9,8 @@ pipeline {
         /* STAGE 1: Code Checkout */
         stage('SCM Checkout') {
             steps {
-                git branch: 'main', 
-                url: 'https://github.com/PavithraJayarathna/newMovie.git'
+                git branch: 'pavinew', 
+                url: 'https://github.com/PavithraJayarathna/movieapp.git'
             }
         }
 
