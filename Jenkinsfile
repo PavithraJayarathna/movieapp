@@ -101,6 +101,7 @@ pipeline {
                 }
             }
         }
+    }
 
         /* STAGE 5: Ansible Execution */
         stage('Run Ansible Playbook') {
