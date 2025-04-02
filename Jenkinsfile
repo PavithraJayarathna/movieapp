@@ -105,7 +105,7 @@ pipeline {
             steps {
                 dir('ansible') {
                     script {
-                        // 1. First verify all required files exist
+                        // 1. Verify required files exist
                         def keyExists = fileExists 'keys/deploy_key.pem'
                         def inventoryExists = fileExists 'inventory.ini'
                         def playbookExists = fileExists 'deploy-movieapp.yml'
@@ -116,36 +116,26 @@ pipeline {
                                 "${!inventoryExists ? 'inventory.ini ' : ''}" +
                                 "${!playbookExists ? 'deploy-movieapp.yml' : ''}")
                         }
-                        
-                        // 2. Use native Windows Ansible as primary approach
-                        try {
+
+                        // 2. Use a working Docker image with proper Ansible version
+                        withCredentials([sshUserPrivateKey(
+                            credentialsId: 'ec2-ssh-key',
+                            keyFileVariable: 'SSH_KEY'
+                        )]) {
                             bat """
-                            \"${env.PYTHON_SCRIPTS}\\ansible-galaxy.exe\" collection install community.docker --ignore-errors
-                            \"${env.PYTHON_SCRIPTS}\\ansible-playbook.exe\" -i inventory.ini deploy-movieapp.yml -vvv
+                            docker run --rm ^
+                                -v "%cd%:/ansible" ^
+                                -w /ansible ^
+                                -e ANSIBLE_HOST_KEY_CHECKING=False ^
+                                ghcr.io/ansible/ansible-runner:latest ^
+                                sh -c "\
+                                    apk add --no-cache openssh-client && \
+                                    mkdir -p /root/.ssh && \
+                                    cp /ansible/keys/deploy_key.pem /root/.ssh/id_rsa && \
+                                    chmod 600 /root/.ssh/id_rsa && \
+                                    ansible-galaxy collection install community.docker -f && \
+                                    ansible-playbook -i inventory.ini deploy-movieapp.yml -vvv"
                             """
-                        } catch (Exception e) {
-                            echo "Native Ansible failed, trying Docker approach..."
-                            
-                            // 3. Docker fallback with improved error handling
-                            withCredentials([sshUserPrivateKey(
-                                credentialsId: 'ec2-ssh-key',
-                                keyFileVariable: 'SSH_KEY'
-                            )]) {
-                                bat """
-                                docker run --rm ^
-                                    -v "%cd%:/ansible" ^
-                                    -w /ansible ^
-                                    -e ANSIBLE_HOST_KEY_CHECKING=False ^
-                                    willhallonline/ansible:2.12-alpine ^
-                                    sh -c "\
-                                        apk add --no-cache openssh-client && \
-                                        mkdir -p /root/.ssh && \
-                                        cp /ansible/keys/deploy_key.pem /root/.ssh/id_rsa && \
-                                        chmod 600 /root/.ssh/id_rsa && \
-                                        ansible-galaxy collection install community.docker -f && \
-                                        ansible-playbook -i inventory.ini deploy-movieapp.yml -vvv"
-                                """
-                            }
                         }
                     }
                 }
