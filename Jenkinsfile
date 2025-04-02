@@ -22,10 +22,8 @@ pipeline {
                     bat 'terraform init'
                     bat 'terraform apply -auto-approve'
                     script {
-                        env.EC2_PUBLIC_IP = bat(
-                            script: 'terraform output -raw ec2_public_ip', 
-                            returnStdout: true
-                        ).trim()
+                        // Properly capture EC2 IP without extra commands
+                        env.EC2_PUBLIC_IP = bat(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
                     }
                 }
             }
@@ -48,7 +46,6 @@ pipeline {
                                 --build-arg REACT_APP_API_URL=http://backend:8000 ^
                                 -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^
                                 ./movieapp-frontend
-                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
                             """
                         },
@@ -59,7 +56,6 @@ pipeline {
                                 --build-arg MONGO_URI=mongodb://mongo:27017/movies ^
                                 -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^
                                 ./movieapp-backend
-                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
                             """
                         }
@@ -72,17 +68,19 @@ pipeline {
         stage('Ansible Setup') {
             steps {
                 dir('ansible') {
-                    // Generate inventory.ini
-                    writeFile file: 'inventory.ini', text: """
-                    [movieapp_servers]
-                    ${env.EC2_PUBLIC_IP}
+                    // Generate clean inventory.ini without template syntax
+                    script {
+                        writeFile file: 'inventory.ini', text: """
+                        [movieapp_servers]
+                        ${env.EC2_PUBLIC_IP}
 
-                    [movieapp_servers:vars]
-                    ansible_user=${ANSIBLE_USER}
-                    ansible_ssh_private_key_file=/ansible/keys/deploy_key.pem
-                    ansible_python_interpreter=/usr/bin/python3
-                    build_number=${BUILD_NUMBER}
-                    """
+                        [movieapp_servers:vars]
+                        ansible_user=${env.ANSIBLE_USER}
+                        ansible_ssh_private_key_file=/ansible/keys/deploy_key.pem
+                        ansible_python_interpreter=/usr/bin/python3
+                        build_number=${env.BUILD_NUMBER}
+                        """
+                    }
                     
                     // Handle SSH key securely
                     withCredentials([sshUserPrivateKey(
@@ -107,25 +105,30 @@ pipeline {
                     powershell '''
                         $ErrorActionPreference = "Stop"
                         try {
-                            # Debug: Show directory structure
-                            Write-Host "## Current directory structure ##"
-                            tree /F
+                            # Verify files exist
+                            if (-not (Test-Path "keys/deploy_key.pem")) {
+                                throw "SSH key not found at keys/deploy_key.pem"
+                            }
                             
-                            # Debug: Show inventory file
-                            Write-Host "## Inventory file content ##"
-                            Get-Content inventory.ini
-                            
+                            if (-not (Test-Path "inventory.ini")) {
+                                throw "inventory.ini not found"
+                            }
+
                             # Convert Windows path to Linux-style for Docker
                             $ansiblePath = (Get-Location).Path.Replace('\','/')
+
+                            Write-Host "## Starting Ansible Deployment ##"
+                            Write-Host "Using EC2 IP: ${env:EC2_PUBLIC_IP}"
                             
-                            Write-Host "## Starting Ansible in Docker ##"
+                            # Run in container with proper path conversion
                             docker run --rm `
                                 -v "${ansiblePath}:/ansible" `
                                 -w /ansible `
                                 -e ANSIBLE_HOST_KEY_CHECKING=False `
                                 alpine/ansible `
-                                sh -c "chmod 600 /ansible/keys/deploy_key.pem && 
-                                      ansible-galaxy collection install community.docker && 
+                                sh -c "apk add --no-cache openssh-client && 
+                                      chmod 600 /ansible/keys/deploy_key.pem && 
+                                      ansible-galaxy collection install community.docker -f && 
                                       ansible-playbook -i inventory.ini deploy-movieapp.yml -vvv"
                             
                             if ($LASTEXITCODE -ne 0) { 
@@ -133,8 +136,9 @@ pipeline {
                             }
                             Write-Host "## Ansible completed successfully ##"
                         } catch {
-                            Write-Error "## Ansible deployment failed ##"
-                            Write-Error $_
+                            Write-Error "## ANISBLE DEPLOYMENT FAILED ##"
+                            Write-Error "Error: $_"
+                            Write-Error "Check the inventory file and SSH key permissions"
                             exit 1
                         }
                     '''
@@ -156,6 +160,8 @@ pipeline {
         failure {
             echo "Pipeline failed - check logs"
             archiveArtifacts artifacts: 'ansible/**/*.log', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'ansible/inventory.ini', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'ansible/keys/deploy_key.pem', allowEmptyArchive: true
         }
     }
 }
