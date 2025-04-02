@@ -1,14 +1,33 @@
+# Node.js
 node_modules/
 package-lock.json
 yarn.lock
 
+# Build artifacts
 dist/
 build/
 
+# Terraform
 terraform.tfstate
 terraform.tfstate.backup
 .terraform/
-ansible/*.retry
+.terraform.lock.hcl
+*.tfvars
 
+# Ansible
+ansible/*.retry
+ansible/keys/*.pem
+ansible/inventory.ini  # Auto-generated file
+
+# System/OS
+.DS_Store
+Thumbs.db
+
+# Archives
 *.tar
 *.img
+*.zip
+
+# IDE
+.vscode/
+.idea/

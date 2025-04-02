@@ -1,103 +1,120 @@
 pipeline {
     agent any
-
     environment {
-        EC2_USER = 'ec2-user'
+        // Static variables matching your Ansible config
+        ANSIBLE_USER = 'ec2-user'
+        DOCKER_REGISTRY = 'pavithra0228'
     }
-
     stages {
+        /* STAGE 1: Code Checkout */
         stage('SCM Checkout') {
             steps {
-                retry(3) {
-                    git branch: 'main', url: 'https://github.com/PavithraJayarathna/movieapp.git'
-                }
+                git branch: 'main', 
+                url: 'https://github.com/PavithraJayarathna/newMovie.git'
             }
         }
 
-        stage('Infrastructure Setup (Parallel)') {
-            parallel {
-                stage('Terraform Init & Apply') {
-                    steps {
-                        script {
-                            echo "Starting Terraform Init & Apply"
-                            bat '''
-                            cd terraform
-                            terraform init
-                            terraform apply -parallelism=10 -auto-approve
-                            '''
-                        }
-                    }
-                }
-
-                stage('Docker Login') {
-                    steps {
-                        withCredentials([usernamePassword(credentialsId: 'new-credential', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                            echo "Docker Username: ${DOCKER_USERNAME}"
-                            echo "Docker Password: ${DOCKER_PASSWORD}"
-                        }
+        /* STAGE 2: Terraform Deployment */
+        stage('Terraform Apply') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform init'
+                    sh 'terraform apply -auto-approve'
+                    script {
+                        env.EC2_PUBLIC_IP = sh(
+                            script: 'terraform output -raw ec2_public_ip', 
+                            returnStdout: true
+                        ).trim()
                     }
                 }
             }
         }
 
-        stage('Docker Build & Push (Parallel)') {
-            parallel {
-                stage('Build & Push Frontend') {
-                    steps {
-                        script {
-                            bat '''
-                            docker build --cache-from=pavithra0228/movieapp-frontend:latest -t pavithra0228/movieapp-frontend:%BUILD_NUMBER% ./movieapp-frontend
-                            docker push pavithra0228/movieapp-frontend:%BUILD_NUMBER%
-                            '''
-                        }
-                    }
-                }
-
-                stage('Build & Push Backend') {
-                    steps {
-                        script {
-                            bat '''
-                            docker build --cache-from=pavithra0228/movieapp-backend:latest -t pavithra0228/movieapp-backend:%BUILD_NUMBER% ./movieapp-backend
-                            docker push pavithra0228/movieapp-backend:%BUILD_NUMBER%
-                            '''
-                        }
-                    }
-                }
+        /* STAGE 3: Docker Build & Push */
+        stage('Docker Operations') {
+            environment {
+                DOCKER_CREDS = credentials('docker-hub-creds')
             }
-        }
-
-        stage('Deploy to EC2') {
             steps {
                 script {
-                    // Get EC2 Public IP from Terraform Output
-                    def ec2_public_ip = bat(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
-                    if (!ec2_public_ip) {
-                        error "EC2 instance IP not found. Terraform might have failed."
-                    }
+                    parallel(
+                        frontend: {
+                            sh """
+                            docker build \
+                                --build-arg REACT_APP_API_URL=http://backend:8000 \
+                                -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} \
+                                ./movieapp-frontend
+                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
+                            docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
+                            """
+                        },
+                        backend: {
+                            sh """
+                            docker build \
+                                --build-arg PORT=8000 \
+                                --build-arg MONGO_URI=mongodb://mongo:27017/movies \
+                                -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} \
+                                ./movieapp-backend
+                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
+                            docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
+                            """
+                        }
+                    )
+                }
+            }
+        }
 
-                    echo "Deploying to EC2 at ${ec2_public_ip}"
+        /* STAGE 4: Ansible Deployment */
+        stage('Ansible Setup') {
+            steps {
+                dir('ansible') {
+                    // Generate inventory.ini exactly as specified
+                    writeFile file: 'inventory.ini', text: """
+                    [movieapp_servers]
+                    ${env.EC2_PUBLIC_IP}
 
-                    // Securely fetch the private key from Jenkins credentials
-                    withCredentials([file(credentialsId: 'testing_id', variable: 'EC2_PRIVATE_KEY_PATH')]) {
-                        bat """
-                        set PRIVATE_KEY_PATH=%EC2_PRIVATE_KEY_PATH%
-                        echo Deploying to EC2..
-                        echo y | "C:\\\\Program Files\\\\PuTTY\\\\plink.exe" -i %PRIVATE_KEY_PATH% ${EC2_USER}@3.93.185.27 ^
-                        "cd /home/ec2-user/movieapp/movieapp-backend && ls -l && docker-compose pull && docker-compose up -d --force-recreate"
+                    [movieapp_servers:vars]
+                    ansible_user=${ANSIBLE_USER}
+                    ansible_ssh_private_key_file=${WORKSPACE}/ansible/keys/deploy_key.pem
+                    ansible_python_interpreter=/usr/bin/python3
+                    build_number=${BUILD_NUMBER}
+                    """
+                    
+                    // Handle SSH key securely
+                    withCredentials([file(credentialsId: 'ec2-ssh-key', variable: 'SSH_KEY')]) {
+                        sh """
+                        cp ${SSH_KEY} keys/deploy_key.pem
+                        chmod 400 keys/deploy_key.pem
                         """
                     }
+                }
+            }
+        }
 
+        /* STAGE 5: Ansible Execution */
+        stage('Run Ansible Playbook') {
+            steps {
+                dir('ansible') {
+                    sh 'ansible-galaxy collection install community.docker'
+                    sh """
+                    ansible-playbook \
+                      -i inventory.ini \
+                      deploy-movieapp.yml
+                    """
                 }
             }
         }
     }
-
     post {
+        always {
+            sh 'docker logout || true'
+            cleanWs()
+        }
         success {
-            echo 'Pipeline completed successfully!'
+            echo "Successfully deployed to ${env.EC2_PUBLIC_IP}"
         }
         failure {
-            echo 'Pipeline failed! Check logs for errors.'
+            echo "Pipeline failed - check logs"
         }
     }
 }

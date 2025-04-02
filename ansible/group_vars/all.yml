@@ -1,0 +1,22 @@
+---
+# Build Information
+build_number: "{{ lookup('env', 'BUILD_NUMBER') }}"
+
+# Docker Images
+frontend_image: "pavithra0228/movieapp-frontend:{{ build_number }}"
+backend_image: "pavithra0228/movieapp-backend:{{ build_number }}"
+
+# Backend Configuration
+mongo_port: "27017"
+mongo_uri: "mongodb://mongo:27017/movies"
+backend_port: "8000"
+backend_container_name: "movieapp_backend"
+
+# Frontend Configuration
+frontend_port: "3000"
+frontend_container_name: "movieapp_frontend"
+frontend_exposed_port: "80"  # Internal container port
+react_app_api_url: "http://backend:8000"  # Frontend->Backend communication
+
+# Network Configuration
+docker_network: "movieapp_network"

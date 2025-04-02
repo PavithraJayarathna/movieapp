@@ -1,0 +1,8 @@
+[movieapp_servers]
+{{ ec2_public_ip }}
+
+[movieapp_servers:vars]
+ansible_user={{ ansible_ssh_user }}
+ansible_ssh_private_key_file={{ ansible_ssh_private_key_path }}
+ansible_python_interpreter=/usr/bin/python3
+build_number={{ build_number }}
