@@ -1,12 +1,10 @@
 pipeline {
     agent any
     environment {
-        // Static variables matching your Ansible config
         ANSIBLE_USER = 'ec2-user'
         DOCKER_REGISTRY = 'pavithra0228'
     }
     stages {
-        /* STAGE 1: Code Checkout */
         stage('SCM Checkout') {
             steps {
                 git branch: 'pavinew', 
@@ -14,7 +12,6 @@ pipeline {
             }
         }
 
-        /* STAGE 2: Terraform Deployment */
         stage('Terraform Apply') {
             steps {
                 dir('terraform') {
@@ -30,7 +27,6 @@ pipeline {
             }
         }
 
-        /* STAGE 3: Docker Build & Push */
         stage('Docker Operations') {
             environment {
                 DOCKER_CREDS = credentials('docker-hub-creds')
@@ -64,11 +60,9 @@ pipeline {
             }
         }
 
-        /* STAGE 4: Ansible Setup */
         stage('Ansible Setup') {
             steps {
                 dir('ansible') {
-                    // Generate inventory.ini exactly as specified
                     writeFile file: 'inventory.ini', text: """
                     [movieapp_servers]
                     ${env.EC2_PUBLIC_IP}
@@ -80,19 +74,19 @@ pipeline {
                     build_number=${BUILD_NUMBER}
                     """
                     
-                    // Handle SSH key securely
-                    withCredentials([file(credentialsId: 'ec2-ssh-key', variable: 'SSH_KEY')]) {
+                    // Updated to use SSH Username with private key
+                    withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
                         bat """
-                        copy ${SSH_KEY} keys\\deploy_key.pem
-                        icacls keys\\deploy_key.pem /inheritance:r
-                        icacls keys\\deploy_key.pem /grant:r "%USERNAME%":(R)
+                        if not exist keys mkdir keys
+                        copy "${SSH_KEY}" "keys\\deploy_key.pem"
+                        icacls "keys\\deploy_key.pem" /inheritance:r
+                        icacls "keys\\deploy_key.pem" /grant:r "%USERNAME%":(R)
                         """
                     }
                 }
             }
         }
 
-        /* STAGE 5: Ansible Execution */
         stage('Run Ansible Playbook') {
             steps {
                 dir('ansible') {
