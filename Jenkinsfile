@@ -1,10 +1,8 @@
 pipeline {
     agent any
     environment {
-
-         PYTHON_SCRIPTS = "C:\\Users\\pavit\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
+        PYTHON_SCRIPTS = "C:\\Users\\pavit\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
         PATH = "${env.PYTHON_SCRIPTS};${env.PATH}"
-        // Static variables matching your Ansible config
         ANSIBLE_USER = 'ec2-user'
         DOCKER_REGISTRY = 'pavithra0228'
     }
@@ -41,8 +39,8 @@ pipeline {
             steps {
                 script {
                     bat """
-                echo %DOCKER_CREDS_PSW% | docker login -u %DOCKER_CREDS_USR% --password-stdin
-            """
+                    echo %DOCKER_CREDS_PSW% | docker login -u %DOCKER_CREDS_USR% --password-stdin
+                    """
                     parallel(
                         frontend: {
                             bat """
@@ -74,7 +72,7 @@ pipeline {
         stage('Ansible Setup') {
             steps {
                 dir('ansible') {
-                    // Generate inventory.ini exactly as specified
+                    // Generate inventory.ini
                     writeFile file: 'inventory.ini', text: """
                     [movieapp_servers]
                     ${env.EC2_PUBLIC_IP}
@@ -87,31 +85,32 @@ pipeline {
                     """
                     
                     // Handle SSH key securely
-            withCredentials([sshUserPrivateKey(
-                credentialsId: 'ec2-ssh-key',
-                keyFileVariable: 'SSH_KEY'
-            )]) {
-                bat """
-                if not exist keys mkdir keys
-                copy "${SSH_KEY}" "keys\\deploy_key.pem"
-                icacls "keys\\deploy_key.pem" /inheritance:r
-                icacls "keys\\deploy_key.pem" /grant:r "%USERNAME%":(R)
-                """
+                    withCredentials([sshUserPrivateKey(
+                        credentialsId: 'ec2-ssh-key',
+                        keyFileVariable: 'SSH_KEY'
+                    )]) {
+                        bat """
+                        if not exist keys mkdir keys
+                        copy "${SSH_KEY}" "keys\\deploy_key.pem"
+                        icacls "keys\\deploy_key.pem" /inheritance:r
+                        icacls "keys\\deploy_key.pem" /grant:r "%USERNAME%":(R)
+                        """
                     }
                 }
             }
         }
-    }
 
         /* STAGE 5: Ansible Execution */
         stage('Run Ansible Playbook') {
-    steps {
-        dir('ansible') {
-            wsl 'ansible-galaxy collection install community.docker'
-            wsl 'ansible-playbook -i inventory.ini deploy-movieapp.yml'
+            steps {
+                dir('ansible') {
+                    wsl 'ansible-galaxy collection install community.docker'
+                    wsl 'ansible-playbook -i inventory.ini deploy-movieapp.yml'
+                }
+            }
         }
-    }
-}
+    } // <-- THIS WAS MISSING (closes the 'stages' block)
+
     post {
         always {
             bat 'docker logout || echo "Already logged out"'
