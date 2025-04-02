@@ -22,8 +22,10 @@ pipeline {
                     bat 'terraform init'
                     bat 'terraform apply -auto-approve'
                     script {
-                        // Properly capture EC2 IP without extra commands
-                        env.EC2_PUBLIC_IP = bat(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
+                        env.EC2_PUBLIC_IP = bat(
+                            script: 'terraform output -raw ec2_public_ip', 
+                            returnStdout: true
+                        ).trim()
                     }
                 }
             }
@@ -68,7 +70,7 @@ pipeline {
         stage('Ansible Setup') {
             steps {
                 dir('ansible') {
-                    // Generate clean inventory.ini without template syntax
+                    // Generate clean inventory.ini
                     script {
                         writeFile file: 'inventory.ini', text: """
                         [movieapp_servers]
@@ -76,7 +78,7 @@ pipeline {
 
                         [movieapp_servers:vars]
                         ansible_user=${env.ANSIBLE_USER}
-                        ansible_ssh_private_key_file=/ansible/keys/deploy_key.pem
+                        ansible_ssh_private_key_file=/root/.ssh/id_rsa
                         ansible_python_interpreter=/usr/bin/python3
                         build_number=${env.BUILD_NUMBER}
                         """
@@ -102,46 +104,67 @@ pipeline {
         stage('Run Ansible Playbook') {
             steps {
                 dir('ansible') {
-                    powershell '''
-                        $ErrorActionPreference = "Stop"
-                        try {
-                            # Verify files exist
-                            if (-not (Test-Path "keys/deploy_key.pem")) {
-                                throw "SSH key not found at keys/deploy_key.pem"
-                            }
-                            
-                            if (-not (Test-Path "inventory.ini")) {
-                                throw "inventory.ini not found"
-                            }
-
-                            # Convert Windows path to Linux-style for Docker
-                            $ansiblePath = (Get-Location).Path.Replace('\','/')
-
-                            Write-Host "## Starting Ansible Deployment ##"
-                            Write-Host "Using EC2 IP: ${env:EC2_PUBLIC_IP}"
-                            
-                            # Run in container with proper path conversion
-                            docker run --rm `
-                                -v "${ansiblePath}:/ansible" `
-                                -w /ansible `
-                                -e ANSIBLE_HOST_KEY_CHECKING=False `
-                                alpine/ansible `
-                                sh -c "apk add --no-cache openssh-client && 
-                                      chmod 600 /ansible/keys/deploy_key.pem && 
-                                      ansible-galaxy collection install community.docker -f && 
-                                      ansible-playbook -i inventory.ini deploy-movieapp.yml -vvv"
-                            
-                            if ($LASTEXITCODE -ne 0) { 
-                                throw "Ansible failed with exit code $LASTEXITCODE" 
-                            }
-                            Write-Host "## Ansible completed successfully ##"
-                        } catch {
-                            Write-Error "## ANISBLE DEPLOYMENT FAILED ##"
-                            Write-Error "Error: $_"
-                            Write-Error "Check the inventory file and SSH key permissions"
-                            exit 1
+                    script {
+                        // 1. First verify all required files exist
+                        def keyExists = fileExists 'keys/deploy_key.pem'
+                        def inventoryExists = fileExists 'inventory.ini'
+                        def playbookExists = fileExists 'deploy-movieapp.yml'
+                        
+                        if (!keyExists || !inventoryExists || !playbookExists) {
+                            error("Missing required files: " +
+                                "${!keyExists ? 'deploy_key.pem ' : ''}" +
+                                "${!inventoryExists ? 'inventory.ini ' : ''}" +
+                                "${!playbookExists ? 'deploy-movieapp.yml' : ''}")
                         }
-                    '''
+                        
+                        // 2. Use native Windows Ansible as primary approach
+                        try {
+                            bat """
+                            \"${env.PYTHON_SCRIPTS}\\ansible-galaxy.exe\" collection install community.docker --ignore-errors
+                            \"${env.PYTHON_SCRIPTS}\\ansible-playbook.exe\" -i inventory.ini deploy-movieapp.yml -vvv
+                            """
+                        } catch (Exception e) {
+                            echo "Native Ansible failed, trying Docker approach..."
+                            
+                            // 3. Docker fallback with improved error handling
+                            withCredentials([sshUserPrivateKey(
+                                credentialsId: 'ec2-ssh-key',
+                                keyFileVariable: 'SSH_KEY'
+                            )]) {
+                                bat """
+                                docker run --rm ^
+                                    -v "%cd%:/ansible" ^
+                                    -w /ansible ^
+                                    -e ANSIBLE_HOST_KEY_CHECKING=False ^
+                                    willhallonline/ansible:2.12-alpine ^
+                                    sh -c "\
+                                        apk add --no-cache openssh-client && \
+                                        mkdir -p /root/.ssh && \
+                                        cp /ansible/keys/deploy_key.pem /root/.ssh/id_rsa && \
+                                        chmod 600 /root/.ssh/id_rsa && \
+                                        ansible-galaxy collection install community.docker -f && \
+                                        ansible-playbook -i inventory.ini deploy-movieapp.yml -vvv"
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /* STAGE 6: Verification */
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    // Test frontend
+                    bat """
+                    curl -s -o nul -w "%%{http_code}" http://${env.EC2_PUBLIC_IP}:3000 | findstr "200"
+                    """
+                    
+                    // Test backend API
+                    bat """
+                    curl -s -o nul -w "%%{http_code}" http://${env.EC2_PUBLIC_IP}:8000/api/movies | findstr "200"
+                    """
                 }
             }
         }
@@ -161,7 +184,7 @@ pipeline {
             echo "Pipeline failed - check logs"
             archiveArtifacts artifacts: 'ansible/**/*.log', allowEmptyArchive: true
             archiveArtifacts artifacts: 'ansible/inventory.ini', allowEmptyArchive: true
-            archiveArtifacts artifacts: 'ansible/keys/deploy_key.pem', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'terraform/*.tfstate*', allowEmptyArchive: true
         }
     }
 }
