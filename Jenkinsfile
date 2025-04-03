@@ -70,7 +70,7 @@ pipeline {
                     }
                     bat """
                     docker run --rm -v "${pwd().replace('\\', '/')}:/ansible" -w /ansible \
-                    -e ANSIBLE_HOST_KEY_CHECKING=False alpine/ansible sh -c "ansible-playbook -i inventory.ini -vv deploy-movieapp.yml"
+                    -e ANSIBLE_HOST_KEY_CHECKING=False alpine/ansible sh -c "ansible-playbook -i ansible/inventory.ini -vv ansible/deploy-movieapp.yml"
                     """
                 }
             }
