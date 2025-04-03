@@ -11,6 +11,7 @@ provider "aws" {
   region = "us-east-1"
 }
 
+# Security Group definition
 resource "aws_security_group" "devops_sg" {
   name_prefix = "devops-sg-"
   description = "Security group for DevOps application"
@@ -67,6 +68,7 @@ resource "aws_security_group" "devops_sg" {
   }
 }
 
+# EC2 Instance definition
 resource "aws_instance" "devops_EC2" {
   ami                    = "ami-084568db4383264d4"  # Ubuntu 22.04 LTS
   instance_type          = "t2.micro"
@@ -108,6 +110,7 @@ resource "aws_instance" "devops_EC2" {
   }
 }
 
+# Outputs
 output "ec2_public_ip" {
   value       = aws_instance.devops_EC2.public_ip
   description = "Public IP address of the EC2 instance"

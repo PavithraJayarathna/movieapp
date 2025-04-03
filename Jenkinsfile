@@ -4,7 +4,7 @@ pipeline {
         DOCKER_REGISTRY = 'pavithra0228'
         TF_CACHE_DIR = "C:\\terraform_cache"
         ANSIBLE_USER = 'ec2-user'
-        AWS_DEFAULT_REGION = 'us-west-2'
+        AWS_DEFAULT_REGION = 'us-east-1'
     }
 
     stages {
@@ -12,20 +12,10 @@ pipeline {
             steps {
                 script {
                     dir('terraform') {
-                        def instanceId = bat(
-                            script: '@aws ec2 describe-instances --filters "Name=tag:Name,Values=DevOpsEC2" "Name=instance-state-name,Values=running" --query "Reservations[].Instances[].InstanceId" --output text',
-                            returnStdout: true
-                        ).trim()
-
-                        echo "AWS CLI returned: '${instanceId}'"
-
-                        if (instanceId && instanceId.startsWith('i-')) {
-                            echo "Active 'DevOpsEC2' instance found - Skipping Terraform provisioning."
-                        } else {
-                            echo "No running instance detected - Provisioning infrastructure..."
-                            bat 'terraform init -input=false'
-                            bat 'terraform apply -auto-approve'
-                        }
+                        // Initialize Terraform and apply the configuration to provision the instance
+                        echo "Provisioning infrastructure with Terraform..."
+                        bat 'terraform init -input=false'
+                        bat 'terraform apply -auto-approve'
                     }
                 }
             }
@@ -50,9 +40,14 @@ pipeline {
         stage('Ansible Deploy') {
             steps {
                 script {
+                    // Retrieve the public IP of the instance created by Terraform
+                    def ec2PublicIp = sh(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
+                    echo "EC2 Public IP: ${ec2PublicIp}"
+
+                    // Prepare the Ansible inventory file
                     def inventoryContent = """
                     [movieapp_servers]
-                    ${env.EC2_PUBLIC_IP}
+                    ${ec2PublicIp}
 
                     [movieapp_servers:vars]
                     ansible_user=${ANSIBLE_USER}
@@ -63,6 +58,7 @@ pipeline {
                     """
                     writeFile file: 'ansible/inventory.ini', text: inventoryContent
 
+                    // Copy SSH key securely for Ansible deployment
                     withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
                         bat """
                         if not exist keys mkdir keys
@@ -71,6 +67,7 @@ pipeline {
                         """
                     }
 
+                    // Run the Ansible playbook
                     bat """
                     docker run --rm -v "%CD%:/ansible" -w /ansible \
                     -e ANSIBLE_HOST_KEY_CHECKING=False \
@@ -83,9 +80,9 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            cleanWs()  // Clean workspace after each build
             dir('terraform') {
-                bat 'terraform destroy -auto-approve'
+                bat 'terraform destroy -auto-approve'  // Clean up Terraform resources
             }
         }
         success {
