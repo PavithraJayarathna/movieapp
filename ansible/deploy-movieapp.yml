@@ -7,10 +7,24 @@
     backend_image: "{{ docker_registry }}/movieapp-backend:{{ build_number }}"
 
   tasks:
+    - name: Ensure Docker is installed
+      apt:
+        name: docker.io
+        state: present
+      become: yes
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
     - name: Login to Docker Registry
       docker_login:
+        registry_url: "https://index.docker.io/v1/"
         username: "{{ lookup('env', 'DOCKER_CREDS_USR') }}"
         password: "{{ lookup('env', 'DOCKER_CREDS_PSW') }}"
+      no_log: true  # Hide sensitive information
 
     - name: Pull Docker images
       docker_image:
@@ -19,6 +33,14 @@
       loop:
         - "{{ frontend_image }}"
         - "{{ backend_image }}"
+
+    - name: Stop and Remove Old Containers
+      docker_container:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - movieapp-frontend
+        - movieapp-backend
 
     - name: Run Frontend container
       docker_container:
@@ -38,5 +60,5 @@
         ports:
           - "8080:8080"
         env:
-          DATABASE_URL: "cluster0.ekd0ilq.mongodb.net/movieapp"
+          DATABASE_URL: "mongodb+srv://username:password@cluster0.ekd0ilq.mongodb.net/movieapp"
           API_KEY: "cccd7d7b"
