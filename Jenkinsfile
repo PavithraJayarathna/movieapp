@@ -11,19 +11,24 @@ pipeline {
             steps {
                 dir('terraform') {
                     bat """
-                    if not exist "${TF_CACHE_DIR}" mkdir "${TF_CACHE_DIR}"
-                    set TF_PLUGIN_CACHE_DIR=${TF_CACHE_DIR}
                     terraform init -input=false
                     terraform validate
-                    terraform apply -auto-approve -input=false
+                    terraform plan -out=tfplan -input=false
+                    terraform apply -input=false -auto-approve tfplan
                     """
+
                     script {
-                        env.EC2_PUBLIC_IP = bat(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
+                        env.EC2_PUBLIC_IP = bat(
+                            script: 'terraform output -raw ec2_public_ip',
+                            returnStdout: true
+                        ).trim()
                         echo "EC2 Public IP: ${env.EC2_PUBLIC_IP}"
                     }
                 }
             }
         }
+
+
         
         stage('Docker Build & Push') {
             environment {

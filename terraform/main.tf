@@ -2,6 +2,15 @@ provider "aws" {
   region = "us-east-1"
 }
 
+# Fetch existing EC2 instance with tag Name=MovieEc2
+data "aws_instances" "existing" {
+  filter {
+    name   = "tag:Name"
+    values = ["MovieEc2"]
+  }
+}
+
+# Security Group for MovieApp
 resource "aws_security_group" "movieapp_sg" {
   name_prefix = "movieapp-sg-"
 
@@ -33,7 +42,6 @@ resource "aws_security_group" "movieapp_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow access to backend on port 8000
   ingress {
     from_port   = 8000
     to_port     = 8000
@@ -42,7 +50,10 @@ resource "aws_security_group" "movieapp_sg" {
   }
 }
 
+# Create EC2 instance only if no existing instance is found
 resource "aws_instance" "MovieEc2" {
+  count = length(data.aws_instances.existing.ids) > 0 ? 0 : 1  # Skip creation if instance exists
+
   ami                    = "ami-071226ecf16aa7d96"
   instance_type          = "t2.micro"
   key_name               = "testing_1"
@@ -65,7 +76,8 @@ resource "aws_instance" "MovieEc2" {
   }
 }
 
+# Output the EC2 public IP (existing or newly created)
 output "ec2_public_ip" {
-  value       = aws_instance.MovieEc2.public_ip
+  value       = length(data.aws_instances.existing.public_ips) > 0 ? data.aws_instances.existing.public_ips[0] : aws_instance.MovieEc2[0].public_ip
   description = "Public IP of the EC2 instance"
 }
