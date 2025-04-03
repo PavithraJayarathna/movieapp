@@ -11,15 +11,15 @@ pipeline {
             steps {
                 dir('terraform') {
                     bat """
-                        # Create cache directory in workspace
+                        # Create cache directory
                         if not exist ".terraform_cache" mkdir ".terraform_cache"
                         
-                        # Create config file in workspace instead of user profile
-                        echo plugin_cache_dir = "${WORKSPACE}\\terraform\\.terraform_cache" > .terraformrc
+                        # Create config file with proper escaping
+                        echo plugin_cache_dir = "${WORKSPACE}/terraform/.terraform_cache" > .terraformrc
                         
                         # Set environment variables
-                        set TF_CLI_CONFIG_FILE=${WORKSPACE}\\terraform\\.terraformrc
-                        set TF_PLUGIN_CACHE_DIR=${WORKSPACE}\\terraform\\.terraform_cache
+                        set TF_CLI_CONFIG_FILE=.terraformrc
+                        set TF_PLUGIN_CACHE_DIR=.terraform_cache
                         
                         # Terraform commands
                         terraform init -input=false
@@ -38,7 +38,6 @@ pipeline {
                 }
             }
         }
-
 
         stage('Docker Build & Push') {
             environment {
