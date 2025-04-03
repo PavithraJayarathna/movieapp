@@ -2,24 +2,42 @@
 - name: Deploy MovieApp
   hosts: movieapp_servers
   become: yes
+  vars:
+    app_dir: "/path/to/app"  # Replace with actual app directory
+    docker_registry: "pavithra0228"  # Replace with your registry
+    build_number: "latest"  # Adjust the version as needed
+
   tasks:
-  
-    - name: Install Docker
+    # 1. Install Docker (Official method)
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        update_cache: yes
+
+    - name: Install Docker and Docker Compose
       apt:
         name:
-          - docker.io
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
           - docker-compose-plugin
-        update_cache: yes
         state: present
-      when: ansible_os_family == 'Debian'
+        update_cache: yes
 
+    # 2. Start Docker service
     - name: Start Docker service
       service:
         name: docker
         state: started
         enabled: yes
 
-    # Your existing deployment tasks
+    # 3. Pull and deploy frontend container
     - name: Pull and deploy frontend container
       docker_container:
         name: movieapp-frontend
@@ -31,6 +49,7 @@
         published_ports:
           - "80:80"
 
+    # 4. Pull and deploy backend container
     - name: Pull and deploy backend container
       docker_container:
         name: movieapp-backend
@@ -41,3 +60,23 @@
           - "5000"
         published_ports:
           - "5000:5000"
+
+    # 5. Verify Docker installation and running containers
+    - name: Verify Docker version
+      command: docker --version
+      register: docker_version
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Show Docker version
+      debug:
+        var: docker_version.stdout
+
+    - name: Verify running containers
+      command: docker ps
+      register: running_containers
+      changed_when: false
+
+    - name: Show container status
+      debug:
+        var: running_containers.stdout_lines
