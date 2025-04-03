@@ -1,60 +1,42 @@
 ---
-- name: Install Docker and deploy containers
+- name: Deploy MovieApp containers
   hosts: movieapp_servers
   become: yes
   vars:
-    docker_images:
-      - "{{ docker_registry }}/movieapp-frontend:{{ build_number }}"
-      - "{{ docker_registry }}/movieapp-backend:{{ build_number }}"
+    frontend_image: "{{ docker_registry }}/movieapp-frontend:{{ build_number }}"
+    backend_image: "{{ docker_registry }}/movieapp-backend:{{ build_number }}"
 
   tasks:
-    - name: Install required packages
-      yum:
-        name:
-          - docker
-          - device-mapper-persistent-data
-          - lvm2
-        state: present
-        update_cache: yes
-
-    - name: Add ec2-user to docker group
-      user:
-        name: ec2-user
-        groups: docker
-        append: yes
-
-    - name: Start and enable Docker service
-      service:
-        name: docker
-        state: started
-        enabled: yes
-
-    - name: Wait for Docker daemon
-      wait_for:
-        path: /var/run/docker.sock
-        state: present
-        timeout: 30
-
-    - name: Login to Docker Hub
+    - name: Login to Docker Registry
       docker_login:
         username: "{{ lookup('env', 'DOCKER_CREDS_USR') }}"
         password: "{{ lookup('env', 'DOCKER_CREDS_PSW') }}"
 
-    - name: Deploy containers
+    - name: Pull Docker images
+      docker_image:
+        name: "{{ item }}"
+        source: pull
+      loop:
+        - "{{ frontend_image }}"
+        - "{{ backend_image }}"
+
+    - name: Run Frontend container
       docker_container:
-        name: "{{ item.split('/')[2].split(':')[0] }}"
-        image: "{{ item }}"
+        name: movieapp-frontend
+        image: "{{ frontend_image }}"
         state: started
         restart_policy: always
         ports:
-          - "80:3000"   # Frontend
-          - "8080:8080"  # Backend
-      loop: "{{ docker_images }}"
-      notify:
-        - Restart docker
+          - "80:3000"
 
-  handlers:
-    - name: Restart docker
-      service:
-        name: docker
-        state: restarted
+    - name: Run Backend container
+      docker_container:
+        name: movieapp-backend
+        image: "{{ backend_image }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "8080:8080"
+        env:
+          DATABASE_URL: "your-database-url"
+          API_KEY: "your-api-key"
