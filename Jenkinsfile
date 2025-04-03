@@ -12,10 +12,22 @@ pipeline {
             steps {
                 script {
                     dir('terraform') {
-                        // Initialize Terraform and apply the configuration to provision the instance
-                        echo "Provisioning infrastructure with Terraform..."
-                        bat 'terraform init -input=false'
-                        bat 'terraform apply -auto-approve'
+                        // Check if an EC2 instance is already running
+                        def instanceId = bat(
+                            script: '@aws ec2 describe-instances --filters "Name=tag:Name,Values=devops_EC2" "Name=instance-state-name,Values=running" --query "Reservations[].Instances[].InstanceId" --output text',
+                            returnStdout: true
+                        ).trim()
+
+                        echo "AWS CLI returned: '${instanceId}'"
+
+                        // If instanceId exists and starts with "i-", an instance is already running
+                        if (instanceId && instanceId.startsWith('i-')) {
+                            echo "Active 'devops_EC2' instance found - Skipping Terraform provisioning."
+                        } else {
+                            echo "No running instance detected - Provisioning infrastructure..."
+                            bat 'terraform init -input=false'
+                            bat 'terraform apply -auto-approve'
+                        }
                     }
                 }
             }
