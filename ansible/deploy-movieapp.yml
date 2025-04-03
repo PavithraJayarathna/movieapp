@@ -1,82 +1,60 @@
 ---
-- name: Deploy MovieApp
+- name: Install Docker and deploy containers
   hosts: movieapp_servers
   become: yes
   vars:
-    app_dir: "/path/to/app"  # Replace with actual app directory
-    docker_registry: "pavithra0228"  # Replace with your registry
-    build_number: "latest"  # Adjust the version as needed
+    docker_images:
+      - "{{ docker_registry }}/movieapp-frontend:{{ build_number }}"
+      - "{{ docker_registry }}/movieapp-backend:{{ build_number }}"
 
   tasks:
-    # 1. Install Docker (Official method)
-    - name: Add Docker GPG key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-
-    - name: Add Docker repository
-      apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
-        state: present
-        update_cache: yes
-
-    - name: Install Docker and Docker Compose
-      apt:
+    - name: Install required packages
+      yum:
         name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-          - docker-compose-plugin
+          - docker
+          - device-mapper-persistent-data
+          - lvm2
         state: present
         update_cache: yes
 
-    # 2. Start Docker service
-    - name: Start Docker service
+    - name: Add ec2-user to docker group
+      user:
+        name: ec2-user
+        groups: docker
+        append: yes
+
+    - name: Start and enable Docker service
       service:
         name: docker
         state: started
         enabled: yes
 
-    # 3. Pull and deploy frontend container
-    - name: Pull and deploy frontend container
+    - name: Wait for Docker daemon
+      wait_for:
+        path: /var/run/docker.sock
+        state: present
+        timeout: 30
+
+    - name: Login to Docker Hub
+      docker_login:
+        username: "{{ lookup('env', 'DOCKER_CREDS_USR') }}"
+        password: "{{ lookup('env', 'DOCKER_CREDS_PSW') }}"
+
+    - name: Deploy containers
       docker_container:
-        name: movieapp-frontend
-        image: "{{ docker_registry }}/movieapp-frontend:{{ build_number }}"
+        name: "{{ item.split('/')[2].split(':')[0] }}"
+        image: "{{ item }}"
         state: started
         restart_policy: always
-        exposed_ports:
-          - "80"
-        published_ports:
-          - "80:80"
+        ports:
+          - "80:3000"   # Frontend
+          - "8080:8080"  # Backend
+      loop: "{{ docker_images }}"
+      notify:
+        - Restart docker
 
-    # 4. Pull and deploy backend container
-    - name: Pull and deploy backend container
-      docker_container:
-        name: movieapp-backend
-        image: "{{ docker_registry }}/movieapp-backend:{{ build_number }}"
-        state: started
-        restart_policy: always
-        exposed_ports:
-          - "5000"
-        published_ports:
-          - "5000:5000"
-
-    # 5. Verify Docker installation and running containers
-    - name: Verify Docker version
-      command: docker --version
-      register: docker_version
-      changed_when: false
-      ignore_errors: yes
-
-    - name: Show Docker version
-      debug:
-        var: docker_version.stdout
-
-    - name: Verify running containers
-      command: docker ps
-      register: running_containers
-      changed_when: false
-
-    - name: Show container status
-      debug:
-        var: running_containers.stdout_lines
+  handlers:
+    - name: Restart docker
+      service:
+        name: docker
+        state: restarted
