@@ -9,27 +9,30 @@ pipeline {
 
     stages {
         stage('Terraform Setup') {
-            steps {
-                script {
-                    dir('terraform') {
-                        echo "Initializing Terraform..."
-                        bat 'terraform init'
+    steps {
+        script {
+            dir('terraform') {
+                // Check if EC2 instance exists in the Terraform state
+                def instanceExists = bat(script: 'terraform state list aws_instance.devops_EC2', returnStdout: true).trim()
 
-                        echo "Checking if EC2 instance exists..."
-                        def instanceExists = bat(script: 'terraform state list aws_instance.devops_EC2', returnStdout: true).trim()
+                // Debug output
+                echo "Terraform state returned: '${instanceExists}'"
 
-                        // If the instance exists in the Terraform state, set create_instance to false
-                        if (instanceExists) {
-                            echo "EC2 instance already exists. Skipping creation..."
-                            bat 'terraform apply -auto-approve -var "create_instance=false"'
-                        } else {
-                            echo "No EC2 instance found. Creating new instance..."
-                            bat 'terraform apply -auto-approve -var "create_instance=true"'
-                        }
-                    }
+                // Check if the instance exists in the state
+                if (instanceExists) {
+                    echo "EC2 instance 'DevOpsEC2' already exists in the Terraform state. Skipping Terraform creation."
+                } else {
+                    echo "No existing EC2 instance found. Provisioning new instance with Terraform."
+                    // Initialize Terraform
+                    bat 'terraform init'
+                    // Apply Terraform configuration to create the EC2 instance
+                    bat 'terraform apply -auto-approve'
                 }
             }
         }
+    }
+}
+
 
 
 
