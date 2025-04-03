@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         DOCKER_REGISTRY = 'pavithra0228'
-        TF_CACHE_DIR = "C:\\terraform_cache"
+        TF_CACHE_DIR = "C:\\\\terraform_cache"
         ANSIBLE_USER = 'ec2-user'
     }
     
@@ -12,7 +12,7 @@ pipeline {
                 dir('terraform') {
                     bat """
                     if not exist "${TF_CACHE_DIR}" mkdir "${TF_CACHE_DIR}"
-                    echo plugin_cache_dir = "${TF_CACHE_DIR}" > %USERPROFILE%\\.terraformrc
+                    echo plugin_cache_dir = \\"${TF_CACHE_DIR}\\" > %USERPROFILE%\\.terraformrc
                     set TF_CLI_CONFIG_FILE=%USERPROFILE%\\.terraformrc
 
                     terraform init -input=false
@@ -31,6 +31,7 @@ pipeline {
                 }
             }
         }
+    
 
         stage('Docker Build & Push') {
             environment {
