@@ -8,10 +8,7 @@ dist/
 build/
 
 # Terraform
-terraform.tfstate
-terraform.tfstate.backup
 .terraform/
-.terraform.lock.hcl
 *.tfvars
 .terraform/5.93.0
 .terraform/5.94.0
