@@ -4,6 +4,7 @@ pipeline {
         DOCKER_REGISTRY = 'pavithra0228'
         TF_CACHE_DIR = "C:\\terraform_cache"
         ANSIBLE_USER = 'ec2-user'
+        ANSIBLE_SSH_PRIVATE_KEY_PATH = ".\\ansible\\keys\\deploy_key.pem"
     }
     
     stages {
@@ -30,9 +31,6 @@ pipeline {
             }
         }
 
-
-
-        
         stage('Docker Build & Push') {
             environment {
                 DOCKER_CREDS = credentials('docker-hub-creds')
@@ -52,35 +50,52 @@ pipeline {
         stage('Ansible Setup & Deploy') {
             steps {
                 dir('ansible') {
+                    // Create inventory file
                     writeFile file: 'inventory.ini', text: """
                     [movieapp_servers]
                     ${env.EC2_PUBLIC_IP}
 
                     [movieapp_servers:vars]
                     ansible_user=${env.ANSIBLE_USER}
-                    ansible_ssh_private_key_file=${env.ANSIBLE_SSH_PRIVATE_KEY_PATH}
+                    ansible_ssh_private_key_file=/ansible/keys/deploy_key.pem
                     ansible_python_interpreter=/usr/bin/python3
                     build_number=${env.BUILD_NUMBER}
+                    docker_registry=${env.DOCKER_REGISTRY}
                     """
+                    
+                    // Handle SSH key
                     withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
                         bat """
                         if not exist keys mkdir keys
                         copy /Y "%SSH_KEY%" "keys\\deploy_key.pem"
+                        icacls "keys\\deploy_key.pem" /inheritance:r /grant:r "%USERNAME%":(R)
                         """
                     }
+                    
+                    // Run Ansible playbook
                     bat """
-                    docker run --rm -v "${pwd().replace('\\', '/')}:/ansible" -w /ansible \
-                    -e ANSIBLE_HOST_KEY_CHECKING=False alpine/ansible sh -c "ansible-playbook -i ansible/inventory.ini -vv ansible/deploy-movieapp.yml"
+                    docker run --rm -v "${pwd().replace('\\', '/')}:/ansible" \
+                    -v "C:\\ProgramData\\Jenkins\\.ssh:/root/.ssh" \
+                    -w /ansible -e ANSIBLE_HOST_KEY_CHECKING=False \
+                    alpine/ansible sh -c "ansible-playbook -i inventory.ini -vv deploy-movieapp.yml"
                     """
                 }
             }
         }
-
     }
     
     post {
-        always { cleanWs() }
-        success { echo "Deployment Successful: ${env.EC2_PUBLIC_IP}" }
-        failure { echo "Deployment Failed" }
+        always { 
+            cleanWs() 
+            dir('terraform') {
+                bat "terraform destroy -auto-approve"  // Optional: Cleanup resources
+            }
+        }
+        success { 
+            echo "Deployment Successful: ${env.EC2_PUBLIC_IP}" 
+        }
+        failure { 
+            echo "Deployment Failed" 
+        }
     }
 }
