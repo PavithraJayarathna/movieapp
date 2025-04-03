@@ -51,50 +51,30 @@ pipeline {
             }
         }
 
-        stage('Ansible Deploy') {
-            steps {
-                script {
-                    // Fetch EC2 public IP from Terraform output
-                    def ec2PublicIp = bat(
-                        script: 'terraform output -raw ec2_public_ip',
-                        returnStdout: true
-                    ).trim()
-                    
-                    // Generate Ansible inventory dynamically
-                    bat """
-                        echo [movieapp_servers] > ansible\\inventory.ini
-                        echo ${ec2PublicIp} >> ansible\\inventory.ini
-                        echo. >> ansible\\inventory.ini
-                        echo [movieapp_servers:vars] >> ansible\\inventory.ini
-                        echo ansible_user=${ANSIBLE_USER} >> ansible\\inventory.ini
-                        echo ansible_ssh_private_key_file=..\\keys\\ec2_key.pem >> ansible\\inventory.ini
-                        echo ansible_python_interpreter=/usr/bin/python3 >> ansible\\inventory.ini
-                        echo build_number=${BUILD_NUMBER} >> ansible\\inventory.ini
-                        echo docker_registry=${DOCKER_REGISTRY} >> ansible\\inventory.ini
-                    """
-
-                    // Copy the SSH private key for Ansible use
-                    withCredentials([sshUserPrivateKey(
-                        credentialsId: 'ec2-ssh-key',
-                        keyFileVariable: 'SSH_KEY'
-                    )]) {
-                        bat """
-                            if not exist keys mkdir keys
-                            copy /Y "${SSH_KEY}" "keys\\ec2_key.pem"
-                            icacls "keys\\ec2_key.pem" /inheritance:r /grant:r "%USERNAME%":(R)
-                        """
-                    }
-
-                    // Run Ansible Playbook for deployment
-                    bat """
-                        docker run --rm -v "%CD%\\ansible:/ansible" -w /ansible ^
-                            -e ANSIBLE_HOST_KEY_CHECKING=False ^
-                            alpine/ansible ^
-                            ansible-playbook -i inventory.ini -vv deploy-movieapp.yml
-                    """
-                }
+        stage('Ansible Setup') {
+    steps {
+        script {
+            def publicIP = bat(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
+            
+            if (!publicIP) {
+                error "Terraform did not return a valid EC2 public IP. Check your Terraform outputs."
             }
+
+            writeFile file: 'ansible/inventory.ini', text: """
+            [movieapp_servers]
+            ${publicIP}
+            
+            [movieapp_servers:vars]
+            ansible_user=ec2-user
+            ansible_ssh_private_key_file=../keys/ec2_key.pem
+            ansible_python_interpreter=/usr/bin/python3
+            build_number=123
+            docker_registry=pavithra0228
+            """
         }
+    }
+}
+
     }
 
     post {
