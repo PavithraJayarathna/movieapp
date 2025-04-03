@@ -64,12 +64,13 @@ resource "aws_instance" "MovieEc2" {
   }
 
   user_data = <<-EOF
-              #!/bin/bash
-              sudo apt update -y
-              sudo apt install docker docker-compose -y
-              sudo systemctl start docker
-              sudo systemctl enable docker
-              EOF
+    #!/bin/bash
+    sudo apt-get update -y
+    sudo apt-get install -y docker.io
+    sudo systemctl start docker
+    sudo systemctl enable docker
+    sudo usermod -aG docker ubuntu
+  EOF
 
   tags = {
     Name = "MovieEc2"
