@@ -12,13 +12,15 @@ pipeline {
             steps {
                 script {
                     dir('terraform') {
+                        echo "Initializing Terraform..."
+                        bat 'terraform init'
+
                         echo "Checking if EC2 instance exists..."
                         def instanceExists = bat(script: 'terraform state list aws_instance.devops_EC2', returnStdout: true).trim()
 
                         // If the instance exists in the Terraform state, set create_instance to false
                         if (instanceExists) {
                             echo "EC2 instance already exists. Skipping creation..."
-                            // Set variable to skip creation
                             bat 'terraform apply -auto-approve -var "create_instance=false"'
                         } else {
                             echo "No EC2 instance found. Creating new instance..."
@@ -28,6 +30,7 @@ pipeline {
                 }
             }
         }
+
 
 
         stage('Docker Build & Push') {
