@@ -7,33 +7,32 @@ pipeline {
     }
     
     stages {
-        stage('Terraform Apply') {
+        stage('Terraform Setup') {
             steps {
-                dir('terraform') {
-                    bat """
-                        if not exist ".terraform_cache" mkdir "terraform_cache"
-                        
-                        echo plugin_cache_dir = "${WORKSPACE}/terraform/terraform_cache" > terraformrc
-                        
-                        set TF_CLI_CONFIG_FILE=terraformrc
-                        set TF_PLUGIN_CACHE_DIR=terraform_cache
-                        
-                        terraform init -input=false
-                        terraform validate
-                        terraform plan -out=tfplan -input=false
-                        terraform apply -input=false -auto-approve tfplan
-                    """
-                    
-                    script {
-                        env.EC2_PUBLIC_IP = bat(
-                            script: 'terraform output -raw ec2_public_ip',
+                script {
+                    dir('terraform') {
+                        // Get EC2 Instance ID
+                        def instanceId = bat(
+                            script: '@aws ec2 describe-instances --filters "Name=tag:Name,Values=DevOpsEC2" "Name=instance-state-name,Values=running" --query "Reservations[].Instances[].InstanceId" --output text',
                             returnStdout: true
                         ).trim()
-                        echo "EC2 Public IP: ${env.EC2_PUBLIC_IP}"
+
+                        // Debug output
+                        echo "AWS CLI returned: '${instanceId}'"
+
+                        // If instance exists, skip Terraform provisioning
+                        if (instanceId && instanceId.startsWith('i-')) {
+                            echo "Active 'DevOpsEC2' instance found (ID: ${instanceId}) - Skipping Terraform provisioning."
+                        } else {
+                            echo "No running instance detected - Provisioning infrastructure..."
+                            bat 'terraform init -input=false'
+                            bat 'terraform apply -auto-approve'
+                        }
                     }
                 }
             }
         }
+
 
         stage('Docker Build & Push') {
             environment {
