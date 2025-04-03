@@ -62,37 +62,37 @@ resource "aws_instance" "MovieEc2" {
 
   user_data = <<-EOF
     #!/bin/bash
+    set -x  # Enable debugging
+    exec > >(tee /var/log/user-data.log) 2>&1
+    
+    # Update system
     sudo yum update -y
-
-    # Install Docker
-    sudo yum install -y docker
-    sudo systemctl start docker
+    
+    # Install Docker (Amazon Linux 2 specific)
+    sudo amazon-linux-extras install docker -y
     sudo systemctl enable docker
+    sudo systemctl start docker
+    
+    # Add ec2-user to docker group
     sudo usermod -aG docker ec2-user
-
+    
     # Install Docker Compose
     sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     sudo chmod +x /usr/local/bin/docker-compose
     sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
-
-    # Install Git & other tools
-    sudo yum install -y git unzip
-
-    # Pull MovieApp repo (Replace with your repo)
-    git clone https://github.com/yourusername/movieapp.git /home/ec2-user/movieapp
-    cd /home/ec2-user/movieapp
-
-    # Pre-download Docker images (for faster deployment)
-    sudo docker pull pavithra0228/movieapp-frontend:latest
-    sudo docker pull pavithra0228/movieapp-backend:latest
+    
+    # Install other dependencies
+    sudo yum install -y git
+    
+    # Verify installations
+    docker --version
+    docker-compose --version
+    
+    # Reboot to apply all changes (especially usermod)
+    sudo reboot
   EOF
 
   tags = {
     Name = "MovieEc2"
   }
-}
-
-output "ec2_public_ip" {
-  value       = length(data.aws_instances.existing.public_ips) > 0 ? data.aws_instances.existing.public_ips[0] : aws_instance.MovieEc2[0].public_ip
-  description = "Public IP of the EC2 instance"
 }
