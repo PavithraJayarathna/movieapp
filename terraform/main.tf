@@ -1,11 +1,22 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.94.0"
+    }
+  }
+}
+
 provider "aws" {
   region = "us-east-1"
 }
 
 resource "aws_security_group" "devops_sg" {
   name_prefix = "devops-sg-"
+  description = "Security group for DevOps application"
 
   ingress {
+    description = "SSH Access"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -13,6 +24,7 @@ resource "aws_security_group" "devops_sg" {
   }
 
   ingress {
+    description = "HTTP Access"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -20,6 +32,7 @@ resource "aws_security_group" "devops_sg" {
   }
 
   ingress {
+    description = "HTTPS Access"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
@@ -27,6 +40,7 @@ resource "aws_security_group" "devops_sg" {
   }
 
   ingress {
+    description = "App Port"
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
@@ -34,77 +48,72 @@ resource "aws_security_group" "devops_sg" {
   }
 
   ingress {
+    description = "Alternative App Port"
     from_port   = 8000
     to_port     = 8000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow all outbound traffic
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Name = "devops-security-group"
+  }
 }
 
 resource "aws_instance" "devops_EC2" {
-  ami                    = "ami-084568db4383264d4"
+  ami                    = "ami-084568db4383264d4"  # Ubuntu 22.04 LTS
   instance_type          = "t2.micro"
   key_name               = "devops-project"
-  security_groups        = [aws_security_group.devops_sg.name]
+  vpc_security_group_ids = [aws_security_group.devops_sg.id]
 
   root_block_device {
     volume_size = 24
     volume_type = "gp3"
-  }
-
-  lifecycle {
-    ignore_changes = [ami]
+    encrypted   = true
   }
 
   user_data = <<-EOF
               #!/bin/bash
-              set -e
+              set -ex
               
-              echo "Updating system..."
+              # System updates
               sudo apt update -y
-              sudo apt install -y ca-certificates curl gnupg
+              sudo apt upgrade -y
 
-              echo "Adding Docker GPG key..."
-              sudo install -m 0755 -d /etc/apt/keyrings
-              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.asc > /dev/null
-              sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-              echo "Adding Docker repository..."
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-              $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              # Docker installation
+              sudo mkdir -m 0755 -p /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
               sudo apt update -y
-
-              echo "Installing Docker..."
               sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-              echo "Starting Docker service..."
-              sudo systemctl start docker
-              sudo systemctl enable docker
-
-              echo "Adding user to Docker group..."
+              # User permissions
               sudo usermod -aG docker ubuntu
-
-              echo "Allowing SSH login for ubuntu user..."
               echo "ubuntu ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/ubuntu
 
-              echo "Docker installation completed successfully."
+              # Application setup
+              sudo mkdir /app
               EOF
 
   tags = {
-    Name = "EC2_Instance"
+    Name = "MovieApp-Server"
   }
 }
 
 output "ec2_public_ip" {
   value       = aws_instance.devops_EC2.public_ip
-  description = "Public IP of the EC2 instance"
+  description = "Public IP address of the EC2 instance"
+}
+
+output "instance_id" {
+  value       = aws_instance.devops_EC2.id
+  description = "ID of the EC2 instance"
 }
