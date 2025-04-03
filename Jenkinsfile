@@ -12,66 +12,43 @@ pipeline {
             steps {
                 script {
                     dir('terraform') {
-                        // Check if an EC2 instance is already running
-                        def instanceId = bat(
-                            script: '@aws ec2 describe-instances --filters "Name=tag:Name,Values=devops_EC2" "Name=instance-state-name,Values=running" --query "Reservations[].Instances[].InstanceId" --output text',
-                            returnStdout: true
-                        ).trim()
+                        echo "Checking if EC2 instance exists..."
+                        def instanceExists = sh(script: 'terraform state list aws_instance.devops_EC2', returnStdout: true).trim()
 
-                        echo "AWS CLI returned: '${instanceId}'"
-
-                        // If instanceId exists and starts with "i-", an instance is already running
-                        if (instanceId && instanceId.startsWith('i-')) {
-                            echo "Active 'devops_EC2' instance found - Skipping Terraform provisioning."
+                        // If the instance exists in the Terraform state, set create_instance to false
+                        if (instanceExists) {
+                            echo "EC2 instance already exists. Skipping creation..."
+                            // Set variable to skip creation
+                            sh 'terraform apply -auto-approve -var "create_instance=false"'
                         } else {
-                            echo "No running instance detected - Provisioning infrastructure..."
-                            bat 'terraform init -input=false'
-                            bat 'terraform apply -auto-approve'
+                            echo "No EC2 instance found. Creating new instance..."
+                            sh 'terraform apply -auto-approve -var "create_instance=true"'
                         }
                     }
                 }
             }
         }
 
-stage('Docker Build & Push') {
-    steps {
-        script {
-            def dockerCreds = credentials('docker-hub-creds')
-            echo "Starting Docker login..."
-            
-            // Debugging: Print credentials to make sure they are being fetched
-            echo "Docker Username: ${dockerCreds.USR}"
 
-            // Debugging: Check if Docker is installed and running
-            bat 'docker --version'
-            
-            // Log in to Docker Hub
-            bat """
-                echo ${dockerCreds.PSW} | docker login -u ${dockerCreds.USR} --password-stdin
-            """
-            
-            // Debugging: Verify if login was successful
-            bat 'docker info'
-            
-            // Build and Push Frontend Docker Image
-            echo "Building frontend Docker image..."
-            bat """
-                docker build -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ./movieapp-frontend
-                docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
-            """
-            
-            // Build and Push Backend Docker Image
-            echo "Building backend Docker image..."
-            bat """
-                docker build -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ./movieapp-backend
-                docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
-            """
-            
-            // Log out of Docker Hub
-            bat 'docker logout'
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    // Using withCredentials to securely handle Docker credentials
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        // Log in to Docker Hub using the credentials
+                        echo "Logging into Docker Hub with username: ${DOCKER_USERNAME}"
+
+                        bat """
+                        echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
+                        docker build -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ./movieapp-frontend
+                        docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
+                        docker logout
+                        """
+                    }
+                }
+            }
         }
-    }
-}
+    
 
 
         stage('Ansible Deploy') {

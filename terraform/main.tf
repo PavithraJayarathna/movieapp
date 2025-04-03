@@ -1,12 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.94.0"
-    }
-  }
-}
-
 provider "aws" {
   region = "us-east-1"
 }
@@ -68,9 +59,10 @@ resource "aws_security_group" "devops_sg" {
   }
 }
 
-# EC2 Instance definition
+# EC2 Instance definition with conditional creation
 resource "aws_instance" "devops_EC2" {
-  ami                    = "ami-084568db4383264d4"
+  count                  = var.create_instance ? 1 : 0  # Create only if the variable is true
+  ami                    = "ami-084568db4383264d4"  # Ubuntu 22.04 LTS
   instance_type          = "t2.micro"
   key_name               = "testing_1"
   vpc_security_group_ids = [aws_security_group.devops_sg.id]
@@ -108,15 +100,25 @@ resource "aws_instance" "devops_EC2" {
   tags = {
     Name = "MovieApp-Server"
   }
+
+  lifecycle {
+    prevent_destroy = true  # Prevent accidental destruction of the instance
+  }
+}
+
+variable "create_instance" {
+  description = "Flag to control instance creation"
+  type        = bool
+  default     = true  # Change this to `false` if you don't want to create a new instance
 }
 
 # Outputs
 output "ec2_public_ip" {
-  value       = aws_instance.devops_EC2.public_ip
+  value       = aws_instance.devops_EC2[0].public_ip
   description = "Public IP address of the EC2 instance"
 }
 
 output "instance_id" {
-  value       = aws_instance.devops_EC2.id
+  value       = aws_instance.devops_EC2[0].id
   description = "ID of the EC2 instance"
 }
