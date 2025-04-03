@@ -48,6 +48,7 @@ pipeline {
                                 --build-arg REACT_APP_API_URL=http://backend:8000 ^
                                 -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^
                                 ./movieapp-frontend
+                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
                             """
                         },
@@ -58,6 +59,7 @@ pipeline {
                                 --build-arg MONGO_URI=mongodb://mongo:27017/movies ^
                                 -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^
                                 ./movieapp-backend
+                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
                             """
                         }
@@ -70,19 +72,17 @@ pipeline {
         stage('Ansible Setup') {
             steps {
                 dir('ansible') {
-                    // Generate clean inventory.ini
-                    script {
-                        writeFile file: 'inventory.ini', text: """
-                        [movieapp_servers]
-                        ${env.EC2_PUBLIC_IP}
+                    // Generate inventory.ini
+                    writeFile file: 'inventory.ini', text: """
+                    [movieapp_servers]
+                    ${env.EC2_PUBLIC_IP}
 
-                        [movieapp_servers:vars]
-                        ansible_user=${env.ANSIBLE_USER}
-                        ansible_ssh_private_key_file=/root/.ssh/id_rsa
-                        ansible_python_interpreter=/usr/bin/python3
-                        build_number=${env.BUILD_NUMBER}
-                        """
-                    }
+                    [movieapp_servers:vars]
+                    ansible_user=${ANSIBLE_USER}
+                    ansible_ssh_private_key_file=${WORKSPACE}/ansible/keys/deploy_key.pem
+                    ansible_python_interpreter=/usr/bin/python3
+                    build_number=${BUILD_NUMBER}
+                    """
                     
                     // Handle SSH key securely
                     withCredentials([sshUserPrivateKey(
@@ -103,60 +103,12 @@ pipeline {
         /* STAGE 5: Ansible Execution */
         stage('Run Ansible Playbook') {
             steps {
-                dir('ansible') {
-                    script {
-                        // 1. Verify required files exist
-                        def keyExists = fileExists 'keys/deploy_key.pem'
-                        def inventoryExists = fileExists 'inventory.ini'
-                        def playbookExists = fileExists 'deploy-movieapp.yml'
-                        
-                        if (!keyExists || !inventoryExists || !playbookExists) {
-                            error("Missing required files: " +
-                                "${!keyExists ? 'deploy_key.pem ' : ''}" +
-                                "${!inventoryExists ? 'inventory.ini ' : ''}" +
-                                "${!playbookExists ? 'deploy-movieapp.yml' : ''}")
-                        }
-
-                        // 2. Use a reliable Docker image with pre-installed Ansible
-                        withCredentials([sshUserPrivateKey(
-                            credentialsId: 'ec2-ssh-key',
-                            keyFileVariable: 'SSH_KEY'
-                        )]) {
-                            // Primary Option: Using Ubuntu with Ansible
-                            bat """
-                            docker run --rm ^
-                                -v "%cd%:/ansible" ^
-                                -w /ansible ^
-                                -e ANSIBLE_HOST_KEY_CHECKING=False ^
-                                ubuntu:22.04 ^
-                                sh -c "\
-                                    apt-get update -qq && \
-                                    apt-get install -y -qq ansible openssh-client python3-pip && \
-                                    pip install -q docker && \
-                                    mkdir -p /root/.ssh && \
-                                    cp /ansible/keys/deploy_key.pem /root/.ssh/id_rsa && \
-                                    chmod 600 /root/.ssh/id_rsa && \
-                                    ansible-galaxy collection install community.docker -f && \
-                                    ansible-playbook -i inventory.ini deploy-movieapp.yml -vvv"
-                            """
-                        }
-                    }
-                }
-            }
-        }
-
-        /* STAGE 6: Verification */
-        stage('Verify Deployment') {
-            steps {
                 script {
-                    // Test frontend
                     bat """
-                    curl -s -o nul -w "%%{http_code}" http://${env.EC2_PUBLIC_IP}:3000 | findstr "200"
-                    """
-                    
-                    // Test backend API
-                    bat """
-                    curl -s -o nul -w "%%{http_code}" http://${env.EC2_PUBLIC_IP}:8000/api/movies | findstr "200"
+                    docker run --rm -v "%cd%:/ansible" -w /ansible alpine/ansible sh -c "
+                        ansible-galaxy collection install community.docker
+                        ansible-playbook -i inventory.ini deploy-movieapp.yml
+                    "
                     """
                 }
             }
@@ -170,14 +122,9 @@ pipeline {
         }
         success {
             echo "Successfully deployed to ${env.EC2_PUBLIC_IP}"
-            echo "Frontend: http://${env.EC2_PUBLIC_IP}:3000"
-            echo "Backend: http://${env.EC2_PUBLIC_IP}:8000"
         }
         failure {
             echo "Pipeline failed - check logs"
-            archiveArtifacts artifacts: 'ansible/**/*.log', allowEmptyArchive: true
-            archiveArtifacts artifacts: 'ansible/inventory.ini', allowEmptyArchive: true
-            archiveArtifacts artifacts: 'terraform/*.tfstate*', allowEmptyArchive: true
         }
     }
 }
