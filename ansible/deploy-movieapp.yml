@@ -2,31 +2,38 @@
 - name: Deploy MovieApp
   hosts: movieapp_servers
   become: yes
-  vars_files:
-    - group_vars/all.yml
-
   tasks:
-    - name: Ensure app directory exists
-      file:
-        path: /home/ec2-user/movieapp
-        state: directory
-        owner: ec2-user
-        group: ec2-user
+    - name: Ensure Docker is installed
+      package:
+        name: docker
+        state: present
+      when: ansible_facts['os_family'] == 'RedHat'
 
-    - name: Copy docker-compose.yml
-      copy:
-        src: ../movieapp-backend/docker-compose.yml
-        dest: /home/ec2-user/movieapp/docker-compose.yml
-        owner: ec2-user
-        group: ec2-user
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
 
-    - name: Pull and restart containers
-      community.docker.docker_compose:
-        project_src: /home/ec2-user/movieapp
-        pull: yes
-        remove_orphans: yes
-        restart: yes
-      environment:
-        MONGO_URI: "{{ mongo_uri }}"
-        PORT: "{{ backend_port }}"
-        REACT_APP_API_URL: "{{ api_url }}"
+    # Your existing deployment tasks
+    - name: Pull and deploy frontend container
+      docker_container:
+        name: movieapp-frontend
+        image: "{{ docker_registry }}/movieapp-frontend:{{ build_number }}"
+        state: started
+        restart_policy: always
+        exposed_ports:
+          - "80"
+        published_ports:
+          - "80:80"
+
+    - name: Pull and deploy backend container
+      docker_container:
+        name: movieapp-backend
+        image: "{{ docker_registry }}/movieapp-backend:{{ build_number }}"
+        state: started
+        restart_policy: always
+        exposed_ports:
+          - "5000"
+        published_ports:
+          - "5000:5000"
