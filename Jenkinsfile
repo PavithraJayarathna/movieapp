@@ -11,16 +11,23 @@ pipeline {
             steps {
                 dir('terraform') {
                     bat """
-                    if not exist ${TF_CACHE_DIR} mkdir ${TF_CACHE_DIR}
-                    echo plugin_cache_dir = ${TF_CACHE_DIR} > %USERPROFILE%\\terraform-ec2
-                    set TF_CLI_CONFIG_FILE=%USERPROFILE%\\terraform-ec2
-
-                    terraform init -input=false
-                    terraform validate
-                    terraform plan -out=tfplan -input=false
-                    terraform apply -input=false -auto-approve tfplan
+                        # Create cache directory in workspace
+                        if not exist ".terraform_cache" mkdir ".terraform_cache"
+                        
+                        # Create config file in workspace instead of user profile
+                        echo plugin_cache_dir = "${WORKSPACE}\\terraform\\.terraform_cache" > .terraformrc
+                        
+                        # Set environment variables
+                        set TF_CLI_CONFIG_FILE=${WORKSPACE}\\terraform\\.terraformrc
+                        set TF_PLUGIN_CACHE_DIR=${WORKSPACE}\\terraform\\.terraform_cache
+                        
+                        # Terraform commands
+                        terraform init -input=false
+                        terraform validate
+                        terraform plan -out=tfplan -input=false
+                        terraform apply -input=false -auto-approve tfplan
                     """
-
+                    
                     script {
                         env.EC2_PUBLIC_IP = bat(
                             script: 'terraform output -raw ec2_public_ip',
