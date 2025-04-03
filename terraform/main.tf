@@ -9,12 +9,12 @@ terraform {
   backend "s3" {
     bucket = "your-tf-state-bucket"
     key    = "terraform.tfstate"
-    region = "us-east-1"
+    region = "ap-south-1"
   }
 }
 
 provider "aws" {
-  region = "us-east-1"
+  region = "ap-south-1"
 }
 
 # Security Group definition

@@ -4,7 +4,7 @@ pipeline {
         DOCKER_REGISTRY = 'pavithra0228'
         TF_CACHE_DIR = "C:\\terraform_cache"
         ANSIBLE_USER = 'ec2-user'
-        AWS_DEFAULT_REGION = 'us-east-1'
+        AWS_DEFAULT_REGION = 'ap-south-1'
     }
 
     stages {
