@@ -74,7 +74,7 @@ pipeline {
                         echo. >> ansible\\inventory.ini
                         echo [movieapp_servers:vars] >> ansible\\inventory.ini
                         echo ansible_user=${ANSIBLE_USER} >> ansible\\inventory.ini
-                        echo ansible_ssh_private_key_file=..\\keys\\deploy_key.pem >> ansible\\inventory.ini
+                        echo ansible_ssh_private_key_file=..\\keys\\ec2_key.pem >> ansible\\inventory.ini
                         echo ansible_python_interpreter=/usr/bin/python3 >> ansible\\inventory.ini
                         echo build_number=${BUILD_NUMBER} >> ansible\\inventory.ini
                         echo docker_registry=${DOCKER_REGISTRY} >> ansible\\inventory.ini
@@ -87,8 +87,8 @@ pipeline {
                     )]) {
                         bat """
                             if not exist keys mkdir keys
-                            copy /Y "${SSH_KEY}" "keys\\deploy_key.pem"
-                            icacls "keys\\deploy_key.pem" /inheritance:r /grant:r "%USERNAME%":(R)
+                            copy /Y "${SSH_KEY}" "keys\\ec2_key.pem"
+                            icacls "keys\\ec2_key.pem" /inheritance:r /grant:r "%USERNAME%":(R)
                         """
                     }
 
