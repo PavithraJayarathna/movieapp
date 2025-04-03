@@ -72,7 +72,7 @@ resource "aws_security_group" "devops_sg" {
 resource "aws_instance" "devops_EC2" {
   ami                    = "ami-084568db4383264d4"  # Ubuntu 22.04 LTS
   instance_type          = "t2.micro"
-  key_name               = "devops-project"
+  key_name               = "ec2_key"
   vpc_security_group_ids = [aws_security_group.devops_sg.id]
 
   root_block_device {
