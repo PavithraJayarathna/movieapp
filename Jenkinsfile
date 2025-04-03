@@ -8,30 +8,30 @@ pipeline {
     
     stages {
         stage('Terraform Apply') {
-            steps {
-                dir('terraform') {
-                    bat """
-                    if not exist "${TF_CACHE_DIR}" mkdir "${TF_CACHE_DIR}"
-                    echo plugin_cache_dir = ${TF_CACHE_DIR} > %USERPROFILE%\\.terraformrc
-                    set TF_CLI_CONFIG_FILE=%USERPROFILE%\\.terraformrc
+    steps {
+        dir('terraform') {
+            bat """
+            if not exist "${TF_CACHE_DIR}" mkdir "${TF_CACHE_DIR}"
+            echo plugin_cache_dir = C:\\\\terraform_cache > %USERPROFILE%\\.terraformrc
+            set TF_CLI_CONFIG_FILE=%USERPROFILE%\\.terraformrc
 
-                    terraform init -input=false
-                    terraform validate
-                    terraform plan -out=tfplan -input=false
-                    terraform apply -input=false -auto-approve tfplan
-                    """
+            terraform init -input=false
+            terraform validate
+            terraform plan -out=tfplan -input=false
+            terraform apply -input=false -auto-approve tfplan
+            """
 
-                    script {
-                        env.EC2_PUBLIC_IP = bat(
-                            script: 'terraform output -raw ec2_public_ip',
-                            returnStdout: true
-                        ).trim()
-                        echo "EC2 Public IP: ${env.EC2_PUBLIC_IP}"
-                    }
-                }
+            script {
+                env.EC2_PUBLIC_IP = bat(
+                    script: 'terraform output -raw ec2_public_ip',
+                    returnStdout: true
+                ).trim()
+                echo "EC2 Public IP: ${env.EC2_PUBLIC_IP}"
             }
         }
-    
+    }
+}
+
 
         stage('Docker Build & Push') {
             environment {
