@@ -1,9 +1,86 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.94.0"  # Pinned to your exact version
+    }
+  }
+}
+
 provider "aws" {
   region = "us-east-1"
 }
 
+# Security Group definition
+resource "aws_security_group" "devops_sg" {
+  name_prefix = "devops-sg-"
+  description = "Security group for DevOps application"
+
+  ingress {
+    description = "SSH Access"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTP Access"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTPS Access"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "App Port"
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Alternative App Port"
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Added additional ports if needed
+  ingress {
+    description = "Custom Port"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "devops-security-group"
+  }
+}
+
+# EC2 Instance definition with conditional creation
 resource "aws_instance" "devops_EC2" {
-  ami                    = "ami-084568db4383264d4"
+  count                  = var.create_instance ? 1 : 0
+  ami                    = "ami-084568db4383264d4"  # Make sure to use a valid AMI ID for your region
   instance_type          = "t2.micro"
   key_name               = "testing_1"
   vpc_security_group_ids = [aws_security_group.devops_sg.id]
@@ -42,6 +119,13 @@ resource "aws_instance" "devops_EC2" {
   }
 }
 
+variable "create_instance" {
+  description = "Flag to control instance creation"
+  type        = bool
+  default     = true
+}
+
+# Outputs
 output "ec2_public_ip" {
   value       = try(aws_instance.devops_EC2[0].public_ip, null)
   description = "Public IP address of the EC2 instance"
