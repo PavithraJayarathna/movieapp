@@ -33,49 +33,98 @@ pipeline {
             }
         }
 
-        /* STAGE 3: Docker Build & Push */
-        stage('Docker Operations') {
+        stages {
+        /* STAGE 1: Docker Initialization */
+        stage('Initialize Docker') {
+            steps {
+                script {
+                    try {
+                        // Verify Docker is available
+                        bat """
+                        echo "Checking Docker version..."
+                        docker version
+                        echo "Docker system info:"
+                        docker info
+                        """
+                    } catch (Exception e) {
+                        error("Docker not available! Please check Docker installation and permissions.")
+                    }
+                }
+            }
+        }
+
+        /* STAGE 2: Docker Login */
+        stage('Docker Authentication') {
             environment {
-                DOCKER_CREDS = credentials('docker-hub-creds')
+                DOCKER_CREDS = credentials('docker-hub-creds')  // Jenkins credentials ID
             }
             steps {
                 script {
-                    // Test Docker connection first
-                    bat 'docker version || echo "Docker not available"'
+                    try {
+                        // Login to Docker Hub with credentials
+                        bat """
+                        echo "Logging into Docker Hub..."
+                        echo %DOCKER_CREDS_PSW% | docker login -u %DOCKER_CREDS_USR% --password-stdin
+                        echo "Login successful!"
+                        """
+                    } catch (Exception e) {
+                        error("Docker login failed! Check your credentials.")
+                    }
                     
-                    // Login to Docker Hub
+                    // Verify login worked
+                    bat 'docker logout'  // Clean test login
+                }
+            }
+        }
+
+        /* STAGE 3: Docker Build & Push */
+        stage('Docker Operations') {
+            environment {
+                DOCKER_CREDS = credentials('docker-hub-creds')  // Re-declare for parallel stages
+            }
+            steps {
+                script {
+                    // Re-authenticate (necessary for parallel stages)
                     bat """
                     echo %DOCKER_CREDS_PSW% | docker login -u %DOCKER_CREDS_USR% --password-stdin
                     """
                     
-                    // Build and push with error handling
-                    try {
-                        parallel(
-                            frontend: {
+                    // Parallel builds with error handling
+                    parallel(
+                        frontend: {
+                            try {
                                 bat """
+                                echo "Building frontend image..."
                                 docker build ^
                                     --build-arg REACT_APP_API_URL=http://backend:8000 ^
                                     -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^
                                     ./movieapp-frontend
+                                    
+                                echo "Pushing frontend image..."
                                 docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
                                 """
-                            },
-                            backend: {
+                            } catch (Exception e) {
+                                error("Frontend build/push failed: ${e}")
+                            }
+                        },
+                        backend: {
+                            try {
                                 bat """
+                                echo "Building backend image..."
                                 docker build ^
                                     --build-arg PORT=8000 ^
                                     --build-arg MONGO_URI=mongodb://mongo:27017/movies ^
                                     -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^
                                     ./movieapp-backend
+                                    
+                                echo "Pushing backend image..."
                                 docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
                                 """
+                            } catch (Exception e) {
+                                error("Backend build/push failed: ${e}")
                             }
-                        )
-                    } catch (Exception e) {
-                        echo "Docker operation failed: ${e}"
-                        bat 'docker ps -a' // Debug info
-                        error("Docker build/push failed")
-                    }
+                        }
+                    )
                 }
             }
         }
