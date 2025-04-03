@@ -70,7 +70,7 @@ resource "aws_security_group" "devops_sg" {
 
 # EC2 Instance definition
 resource "aws_instance" "devops_EC2" {
-  ami                    = "ami-084568db4383264d4"  # Ubuntu 22.04 LTS
+  ami                    = "ami-084568db4383264d4"
   instance_type          = "t2.micro"
   key_name               = "testing_1"
   vpc_security_group_ids = [aws_security_group.devops_sg.id]

@@ -33,21 +33,46 @@ pipeline {
             }
         }
 
-        stage('Docker Build & Push') {
-            steps {
-                script {
-                    def dockerCreds = credentials('docker-hub-creds')
-                    bat """
-                    echo ${dockerCreds.PSW} | docker login -u ${dockerCreds.USR} --password-stdin
-                    docker build -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ./movieapp-frontend
-                    docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
-                    docker build -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ./movieapp-backend
-                    docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
-                    docker logout
-                    """
-                }
-            }
+stage('Docker Build & Push') {
+    steps {
+        script {
+            def dockerCreds = credentials('docker-hub-creds')
+            echo "Starting Docker login..."
+            
+            // Debugging: Print credentials to make sure they are being fetched
+            echo "Docker Username: ${dockerCreds.USR}"
+
+            // Debugging: Check if Docker is installed and running
+            bat 'docker --version'
+            
+            // Log in to Docker Hub
+            bat """
+                echo ${dockerCreds.PSW} | docker login -u ${dockerCreds.USR} --password-stdin
+            """
+            
+            // Debugging: Verify if login was successful
+            bat 'docker info'
+            
+            // Build and Push Frontend Docker Image
+            echo "Building frontend Docker image..."
+            bat """
+                docker build -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ./movieapp-frontend
+                docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
+            """
+            
+            // Build and Push Backend Docker Image
+            echo "Building backend Docker image..."
+            bat """
+                docker build -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ./movieapp-backend
+                docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
+            """
+            
+            // Log out of Docker Hub
+            bat 'docker logout'
         }
+    }
+}
+
 
         stage('Ansible Deploy') {
             steps {
