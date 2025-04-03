@@ -13,7 +13,10 @@ pipeline {
                 dir('terraform') {
                     bat """
                     if not exist "${TF_CACHE_DIR}" mkdir "${TF_CACHE_DIR}"
+                    echo 'plugin_cache_dir = "${TF_CACHE_DIR}"' > %USERPROFILE%\\.terraformrc
+                    set TF_CLI_CONFIG_FILE=%USERPROFILE%\\.terraformrc
                     set TF_PLUGIN_CACHE_DIR=${TF_CACHE_DIR}
+
                     terraform init -input=false
                     terraform validate
                     terraform plan -out=tfplan -input=false
@@ -30,6 +33,7 @@ pipeline {
                 }
             }
         }
+
 
         stage('Docker Build & Push') {
             environment {
