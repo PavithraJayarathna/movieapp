@@ -4,7 +4,7 @@ pipeline {
         DOCKER_REGISTRY = 'pavithra0228'
         TF_CACHE_DIR = "C:\\terraform_cache"
         ANSIBLE_USER = 'ec2-user'
-        ANSIBLE_SSH_PRIVATE_KEY_PATH = "./ansible/keys/deploy_key.pem"
+        ANSIBLE_SSH_PRIVATE_KEY_PATH = "./ansible/keys/ec2_key.pem"
     }
     
     stages {
