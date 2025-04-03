@@ -11,17 +11,13 @@ pipeline {
             steps {
                 dir('terraform') {
                     bat """
-                        # Create cache directory
-                        if not exist ".terraform_cache" mkdir ".terraform_cache"
+                        if not exist ".terraform_cache" mkdir "terraform_cache"
                         
-                        # Create config file with proper escaping
-                        echo plugin_cache_dir = "${WORKSPACE}/terraform/.terraform_cache" > .terraformrc
+                        echo plugin_cache_dir = "${WORKSPACE}/terraform/terraform_cache" > terraformrc
                         
-                        # Set environment variables
-                        set TF_CLI_CONFIG_FILE=.terraformrc
-                        set TF_PLUGIN_CACHE_DIR=.terraform_cache
+                        set TF_CLI_CONFIG_FILE=terraformrc
+                        set TF_PLUGIN_CACHE_DIR=terraform_cache
                         
-                        # Terraform commands
                         terraform init -input=false
                         terraform validate
                         terraform plan -out=tfplan -input=false
