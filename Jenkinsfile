@@ -11,8 +11,8 @@ pipeline {
             steps {
                 dir('terraform') {
                     bat """
-                    if not exist "${TF_CACHE_DIR}" mkdir "${TF_CACHE_DIR}"
-                    echo plugin_cache_dir = C:\\\\terraform_cache > %USERPROFILE%\\.terraformrc
+                    if not exist ${TF_CACHE_DIR} mkdir ${TF_CACHE_DIR}
+                    echo plugin_cache_dir = ${TF_CACHE_DIR} > %USERPROFILE%\\.terraformrc
                     set TF_CLI_CONFIG_FILE=%USERPROFILE%\\.terraformrc
 
                     terraform init -input=false
