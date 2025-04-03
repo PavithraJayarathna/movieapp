@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    options {
+        skipDefaultCheckout(true) // Prevents "Declarative SCM checkout" from running
+    }
     environment {
         PYTHON_SCRIPTS = "C:\\Users\\pavit\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
         PATH = "${env.PYTHON_SCRIPTS};${env.PATH}"
@@ -7,11 +10,10 @@ pipeline {
         DOCKER_REGISTRY = 'pavithra0228'
     }
     stages {
-        /* STAGE 1: Code Checkout */
+        /* STAGE 1: SCM Checkout */
         stage('SCM Checkout') {
             steps {
-                git branch: 'pavinew', 
-                url: 'https://github.com/PavithraJayarathna/movieapp.git'
+                checkout scm // Uses the Jenkinsfile-defined repository instead of a separate `git` step
             }
         }
 
@@ -44,9 +46,9 @@ pipeline {
                     parallel(
                         frontend: {
                             bat """
-                            docker build ^
-                                --build-arg REACT_APP_API_URL=http://backend:8000 ^
-                                -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^
+                            docker build ^ 
+                                --build-arg REACT_APP_API_URL=http://backend:8000 ^ 
+                                -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^ 
                                 ./movieapp-frontend
                             echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
@@ -54,10 +56,10 @@ pipeline {
                         },
                         backend: {
                             bat """
-                            docker build ^
-                                --build-arg PORT=8000 ^
-                                --build-arg MONGO_URI=mongodb://mongo:27017/movies ^
-                                -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^
+                            docker build ^ 
+                                --build-arg PORT=8000 ^ 
+                                --build-arg MONGO_URI=mongodb://mongo:27017/movies ^ 
+                                -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^ 
                                 ./movieapp-backend
                             echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
@@ -72,7 +74,6 @@ pipeline {
         stage('Ansible Setup') {
             steps {
                 dir('ansible') {
-                    // Generate inventory.ini
                     writeFile file: 'inventory.ini', text: """
                     [movieapp_servers]
                     ${env.EC2_PUBLIC_IP}
@@ -83,8 +84,7 @@ pipeline {
                     ansible_python_interpreter=/usr/bin/python3
                     build_number=${BUILD_NUMBER}
                     """
-                    
-                    // Handle SSH key securely
+
                     withCredentials([sshUserPrivateKey(
                         credentialsId: 'ec2-ssh-key',
                         keyFileVariable: 'SSH_KEY'
