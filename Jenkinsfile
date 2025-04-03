@@ -9,43 +9,27 @@ pipeline {
 
     stages {
         stage('Terraform Setup') {
-    steps {
-        script {
-            dir('terraform') {
-                // Set Terraform cache directory for Windows compatibility
-                bat """
-                    echo plugin_cache_dir = "${TF_CACHE_DIR.replace('\\', '/')}" > %USERPROFILE%\\.terraformrc
-                    set TERRAFORM_CONFIG=%USERPROFILE%\\.terraformrc
-                """
-
-                // Initialize Terraform
-                bat 'terraform init -input=false'
-
-                // Ensure state file exists
-                def stateFileExists = fileExists('terraform.tfstate')
-
-                if (!stateFileExists) {
-                    echo "No Terraform state file found, creating new infrastructure."
-                    bat 'terraform apply -auto-approve'
-                } else {
-                    // Check if the EC2 instance already exists
-                    def tfState = bat(
-                        script: 'terraform state list',
-                        returnStdout: true
-                    ).trim()
-
-                    if (tfState.contains("aws_instance.devops_EC2")) {
-                        echo "EC2 instance exists, skipping creation."
-                        bat 'terraform refresh'  // Refresh state if the instance exists
-                    } else {
-                        echo "No EC2 instance found, creating a new one."
-                        bat 'terraform apply -auto-approve'
+            steps {
+                script {
+                    dir('terraform') {
+                        bat 'terraform init -input=false'
+                        
+                        // Refresh state to recognize existing resources
+                        bat 'terraform refresh'
+                        
+                        def tfState = bat(script: 'terraform state list', returnStdout: true).trim()
+                        
+                        if (tfState.contains("aws_instance.devops_EC2")) {
+                            echo "EC2 instance exists, skipping creation."
+                        } else {
+                            echo "No EC2 instance found, creating a new one."
+                            bat 'terraform apply -auto-approve'
+                        }
                     }
                 }
             }
         }
-    }
-}
+
 
 
         stage('Docker Build & Push') {
