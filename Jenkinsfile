@@ -1,19 +1,20 @@
 pipeline {
     agent any
-    options {
-        skipDefaultCheckout(true) // Prevents "Declarative SCM checkout" from running
-    }
+
     environment {
         PYTHON_SCRIPTS = "C:\\Users\\pavit\\AppData\\Local\\Programs\\Python\\Python312\\Scripts"
         PATH = "${env.PYTHON_SCRIPTS};${env.PATH}"
         ANSIBLE_USER = 'ec2-user'
         DOCKER_REGISTRY = 'pavithra0228'
+        TERRAFORM_CACHE = "C:\\terraform_cache"
     }
+
     stages {
-        /* STAGE 1: SCM Checkout */
+        /* STAGE 1: Code Checkout */
         stage('SCM Checkout') {
             steps {
-                checkout scm // Uses the Jenkinsfile-defined repository instead of a separate `git` step
+                git branch: 'pavinew', 
+                url: 'https://github.com/PavithraJayarathna/movieapp.git'
             }
         }
 
@@ -21,8 +22,31 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 dir('terraform') {
-                    bat 'terraform init'
+                    // Ensure Terraform cache directory exists
+                    bat 'mkdir "%TERRAFORM_CACHE%" 2>nul || echo "Cache exists"'
+
+                    // Initialize Terraform with plugin cache
+                    script {
+                        def initSuccess = false
+                        for (int i = 0; i < 3; i++) {
+                            try {
+                                bat 'terraform init -plugin-dir="%TERRAFORM_CACHE%"'
+                                initSuccess = true
+                                break
+                            } catch (Exception e) {
+                                echo "Terraform init failed, retrying... (${i + 1}/3)"
+                                sleep(10)
+                            }
+                        }
+                        if (!initSuccess) {
+                            error "Terraform init failed after 3 attempts"
+                        }
+                    }
+
+                    // Apply Terraform changes
                     bat 'terraform apply -auto-approve'
+
+                    // Fetch EC2 public IP
                     script {
                         env.EC2_PUBLIC_IP = bat(
                             script: 'terraform output -raw ec2_public_ip', 
@@ -40,28 +64,25 @@ pipeline {
             }
             steps {
                 script {
-                    bat """
-                    echo %DOCKER_CREDS_PSW% | docker login -u %DOCKER_CREDS_USR% --password-stdin
-                    """
+                    bat "echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin"
+                    
                     parallel(
                         frontend: {
                             bat """
-                            docker build ^ 
-                                --build-arg REACT_APP_API_URL=http://backend:8000 ^ 
-                                -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^ 
+                            docker build ^
+                                --build-arg REACT_APP_API_URL=http://backend:8000 ^
+                                -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^
                                 ./movieapp-frontend
-                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
                             """
                         },
                         backend: {
                             bat """
-                            docker build ^ 
-                                --build-arg PORT=8000 ^ 
-                                --build-arg MONGO_URI=mongodb://mongo:27017/movies ^ 
-                                -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^ 
+                            docker build ^
+                                --build-arg PORT=8000 ^
+                                --build-arg MONGO_URI=mongodb://mongo:27017/movies ^
+                                -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^
                                 ./movieapp-backend
-                            echo ${DOCKER_CREDS_PSW} | docker login -u ${DOCKER_CREDS_USR} --password-stdin
                             docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
                             """
                         }
@@ -100,7 +121,7 @@ pipeline {
             }
         }
 
-        /* STAGE 5: Ansible Execution */
+        /* STAGE 5: Run Ansible Playbook */
         stage('Run Ansible Playbook') {
             steps {
                 script {
