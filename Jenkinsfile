@@ -129,6 +129,8 @@ pipeline {
             }
         }
 
+    }
+
         /* STAGE 4: Ansible Setup */
         stage('Ansible Setup') {
             steps {
