@@ -38,5 +38,5 @@
         ports:
           - "8080:8080"
         env:
-          DATABASE_URL: "your-database-url"
-          API_KEY: "your-api-key"
+          DATABASE_URL: "cluster0.ekd0ilq.mongodb.net/movieapp"
+          API_KEY: "cccd7d7b"
