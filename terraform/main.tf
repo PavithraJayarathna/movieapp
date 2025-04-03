@@ -1,4 +1,3 @@
-# Add required Terraform block with provider constraints
 terraform {
   required_providers {
     aws = {
@@ -6,13 +5,19 @@ terraform {
       version = "~> 5.94.0"  # Pinned to your exact version
     }
   }
+
+  backend "s3" {
+    bucket = "your-tf-state-bucket"
+    key    = "terraform.tfstate"
+    region = "us-east-1"
+  }
 }
 
 provider "aws" {
   region = "us-east-1"
 }
 
-# Security Group definition (unchanged)
+# Security Group definition
 resource "aws_security_group" "devops_sg" {
   name_prefix = "devops-sg-"
   description = "Security group for DevOps application"
@@ -69,10 +74,10 @@ resource "aws_security_group" "devops_sg" {
   }
 }
 
-# EC2 Instance definition with conditional creation (unchanged)
+# EC2 Instance definition with conditional creation
 resource "aws_instance" "devops_EC2" {
   count                  = var.create_instance ? 1 : 0
-  ami                    = "ami-084568db4383264d4"
+  ami                    = "ami-084568db4383264d4"  # Make sure to use a valid AMI ID for your region
   instance_type          = "t2.micro"
   key_name               = "testing_1"
   vpc_security_group_ids = [aws_security_group.devops_sg.id]
@@ -117,7 +122,7 @@ variable "create_instance" {
   default     = true
 }
 
-# Outputs (unchanged)
+# Outputs
 output "ec2_public_ip" {
   value       = try(aws_instance.devops_EC2[0].public_ip, null)
   description = "Public IP address of the EC2 instance"

@@ -12,25 +12,27 @@ pipeline {
             steps {
                 script {
                     dir('terraform') {
-                        // Create Terraform configuration with Windows paths
+                        // Set Terraform cache directory for Windows compatibility
                         bat """
                             echo plugin_cache_dir = "${TF_CACHE_DIR.replace('\\', '/')}" > %USERPROFILE%\\.terraformrc
                             set TERRAFORM_CONFIG=%USERPROFILE%\\.terraformrc
                         """
-
-                        // Check existing state
+                        
+                        // Initialize Terraform
+                        bat 'terraform init -input=false'
+                        
+                        // Check if the EC2 instance already exists
                         def tfState = bat(
                             script: 'terraform state list',
                             returnStdout: true
                         ).trim()
-
+                        
                         if (tfState.contains("aws_instance.devops_EC2")) {
-                            echo "EC2 instance exists in state"
-                            bat 'terraform refresh'
+                            echo "EC2 instance exists, skipping creation."
+                            bat 'terraform refresh'  // Refresh state if the instance exists
                         } else {
-                            echo "Provisioning new instance"
-                            bat 'terraform init -input=false'
-                            bat 'terraform apply -auto-approve'
+                            echo "No EC2 instance found, creating a new one."
+                            bat 'terraform apply -auto-approve'  // Provision new instance
                         }
                     }
                 }
@@ -59,17 +61,16 @@ pipeline {
         stage('Ansible Deploy') {
             steps {
                 script {
-                    dir('terraform') {
-                        env.EC2_PUBLIC_IP = bat(
-                            script: 'terraform output -raw ec2_public_ip',
-                            returnStdout: true
-                        ).trim()
-                    }
-
-                    // Windows-compatible inventory setup
+                    // Fetch EC2 public IP from Terraform output
+                    def ec2PublicIp = bat(
+                        script: 'terraform output -raw ec2_public_ip',
+                        returnStdout: true
+                    ).trim()
+                    
+                    // Generate Ansible inventory dynamically
                     bat """
                         echo [movieapp_servers] > ansible\\inventory.ini
-                        echo ${env.EC2_PUBLIC_IP} >> ansible\\inventory.ini
+                        echo ${ec2PublicIp} >> ansible\\inventory.ini
                         echo. >> ansible\\inventory.ini
                         echo [movieapp_servers:vars] >> ansible\\inventory.ini
                         echo ansible_user=${ANSIBLE_USER} >> ansible\\inventory.ini
@@ -79,6 +80,7 @@ pipeline {
                         echo docker_registry=${DOCKER_REGISTRY} >> ansible\\inventory.ini
                     """
 
+                    // Copy the SSH private key for Ansible use
                     withCredentials([sshUserPrivateKey(
                         credentialsId: 'ec2-ssh-key',
                         keyFileVariable: 'SSH_KEY'
@@ -90,7 +92,7 @@ pipeline {
                         """
                     }
 
-                    // Windows-compatible Ansible execution
+                    // Run Ansible Playbook for deployment
                     bat """
                         docker run --rm -v "%CD%\\ansible:/ansible" -w /ansible ^
                             -e ANSIBLE_HOST_KEY_CHECKING=False ^
@@ -105,13 +107,14 @@ pipeline {
     post {
         always {
             bat 'docker system prune -af'  // Clean Docker artifacts
-            cleanWs(cleanWhenFailure: true)
+            cleanWs(cleanWhenFailure: true)  // Clean workspace
         }
         success {
+            // Destroy Terraform resources (if needed)
             dir('terraform') {
                 bat 'terraform destroy -auto-approve'
             }
-            echo "Deployment Successful: ${env.EC2_PUBLIC_IP}"
+            echo "Deployment Successful: ${ec2PublicIp}"
         }
         failure {
             echo "Deployment Failed - Resources preserved for debugging"
