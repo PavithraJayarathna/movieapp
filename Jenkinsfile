@@ -13,16 +13,16 @@ pipeline {
                 script {
                     dir('terraform') {
                         echo "Checking if EC2 instance exists..."
-                        def instanceExists = sh(script: 'terraform state list aws_instance.devops_EC2', returnStdout: true).trim()
+                        def instanceExists = bat(script: 'terraform state list aws_instance.devops_EC2', returnStdout: true).trim()
 
                         // If the instance exists in the Terraform state, set create_instance to false
                         if (instanceExists) {
                             echo "EC2 instance already exists. Skipping creation..."
                             // Set variable to skip creation
-                            sh 'terraform apply -auto-approve -var "create_instance=false"'
+                            bat 'terraform apply -auto-approve -var "create_instance=false"'
                         } else {
                             echo "No EC2 instance found. Creating new instance..."
-                            sh 'terraform apply -auto-approve -var "create_instance=true"'
+                            bat 'terraform apply -auto-approve -var "create_instance=true"'
                         }
                     }
                 }
