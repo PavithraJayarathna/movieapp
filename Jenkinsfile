@@ -40,33 +40,42 @@ pipeline {
             }
             steps {
                 script {
+                    // Test Docker connection first
+                    bat 'docker version || echo "Docker not available"'
+                    
                     // Login to Docker Hub
                     bat """
                     echo %DOCKER_CREDS_PSW% | docker login -u %DOCKER_CREDS_USR% --password-stdin
                     """
                     
-                    // Parallel builds for frontend and backend
-                    parallel(
-                        frontend: {
-                            bat """
-                            docker build ^
-                                --build-arg REACT_APP_API_URL=http://backend:8000 ^
-                                -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^
-                                ./movieapp-frontend
-                            docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
-                            """
-                        },
-                        backend: {
-                            bat """
-                            docker build ^
-                                --build-arg PORT=8000 ^
-                                --build-arg MONGO_URI=mongodb://mongo:27017/movies ^
-                                -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^
-                                ./movieapp-backend
-                            docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
-                            """
-                        }
-                    )
+                    // Build and push with error handling
+                    try {
+                        parallel(
+                            frontend: {
+                                bat """
+                                docker build ^
+                                    --build-arg REACT_APP_API_URL=http://backend:8000 ^
+                                    -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ^
+                                    ./movieapp-frontend
+                                docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
+                                """
+                            },
+                            backend: {
+                                bat """
+                                docker build ^
+                                    --build-arg PORT=8000 ^
+                                    --build-arg MONGO_URI=mongodb://mongo:27017/movies ^
+                                    -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ^
+                                    ./movieapp-backend
+                                docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
+                                """
+                            }
+                        )
+                    } catch (Exception e) {
+                        echo "Docker operation failed: ${e}"
+                        bat 'docker ps -a' // Debug info
+                        error("Docker build/push failed")
+                    }
                 }
             }
         }
