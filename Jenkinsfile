@@ -11,12 +11,14 @@ pipeline {
             steps {
                 dir('terraform') {
                     bat """
+                    if not exist "${TF_CACHE_DIR}" mkdir "${TF_CACHE_DIR}"
+                    set TF_PLUGIN_CACHE_DIR=${TF_CACHE_DIR}
                     terraform init -input=false
                     terraform validate
                     terraform plan -out=tfplan -input=false
                     terraform apply -input=false -auto-approve tfplan
                     """
-
+                    
                     script {
                         env.EC2_PUBLIC_IP = bat(
                             script: 'terraform output -raw ec2_public_ip',
@@ -27,6 +29,7 @@ pipeline {
                 }
             }
         }
+
 
 
         
