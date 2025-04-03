@@ -1,64 +1,35 @@
 ---
-- name: Deploy MovieApp containers
+- name: Deploy MovieApp to EC2
   hosts: movieapp_servers
   become: yes
-  vars:
-    frontend_image: "{{ docker_registry }}/movieapp-frontend:{{ build_number }}"
-    backend_image: "{{ docker_registry }}/movieapp-backend:{{ build_number }}"
-
   tasks:
-    - name: Ensure Docker is installed
-      apt:
-        name: docker.io
+  
+    - name: Install Docker (if not installed)
+      yum:
+        name: docker
         state: present
-      become: yes
 
-    - name: Ensure Docker service is running
+    - name: Start Docker service
       service:
         name: docker
         state: started
         enabled: yes
 
-    - name: Login to Docker Registry
-      docker_login:
-        registry_url: "https://index.docker.io/v1/"
-        username: "{{ lookup('env', 'DOCKER_CREDS_USR') }}"
-        password: "{{ lookup('env', 'DOCKER_CREDS_PSW') }}"
-      no_log: true  # Hide sensitive information
+    - name: Log into Docker Hub
+      command: "docker login -u pavithra0228 -p {{ lookup('env', 'DOCKER_PASSWORD') }}"
 
-    - name: Pull Docker images
-      docker_image:
-        name: "{{ item }}"
-        source: pull
-      loop:
-        - "{{ frontend_image }}"
-        - "{{ backend_image }}"
+    - name: Pull the latest image
+      command: "docker pull pavithra0228/movieapp-frontend:{{ lookup('env', 'BUILD_NUMBER') }}"
 
-    - name: Stop and Remove Old Containers
-      docker_container:
-        name: "{{ item }}"
-        state: absent
-      loop:
-        - movieapp-frontend
-        - movieapp-backend
+    - name: Stop any running container
+      command: "docker stop movieapp-frontend || true"
+      ignore_errors: yes
 
-    - name: Run Frontend container
-      docker_container:
-        name: movieapp-frontend
-        image: "{{ frontend_image }}"
-        state: started
-        restart_policy: always
-        ports:
-          - "80:3000"
+    - name: Remove old container
+      command: "docker rm movieapp-frontend || true"
+      ignore_errors: yes
 
-    - name: Run Backend container
-      docker_container:
-        name: movieapp-backend
-        image: "{{ backend_image }}"
-        state: started
-        restart_policy: always
-        ports:
-          - "8080:8080"
-        env:
-          DATABASE_URL: "mongodb+srv://username:password@cluster0.ekd0ilq.mongodb.net/movieapp"
-          API_KEY: "cccd7d7b"
+    - name: Run Docker container
+      command: >
+        docker run -d --name movieapp-frontend -p 80:3000 
+        pavithra0228/movieapp-frontend:{{ lookup('env', 'BUILD_NUMBER') }}

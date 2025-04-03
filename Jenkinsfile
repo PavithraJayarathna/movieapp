@@ -51,7 +51,7 @@ pipeline {
             }
         }
 
-        stage('Ansible Setup') {
+        stage('Ansible Deployment') {
     steps {
         script {
             def publicIP = bat(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
@@ -68,24 +68,16 @@ pipeline {
             ansible_user=ec2-user
             ansible_ssh_private_key_file=../keys/ec2_key.pem
             ansible_python_interpreter=/usr/bin/python3
-            build_number=123
             docker_registry=pavithra0228
+            build_number=${BUILD_NUMBER}
             """
+
+            // Run Ansible playbook to deploy Docker container on EC2
+            bat 'ansible-playbook -i ansible/inventory.ini ansible/deploy.yml'
         }
     }
 }
 
-stage('Cleanup Docker') {
-    steps {
-        script {
-            try {
-                sh 'docker system prune -af || echo "Prune already running, skipping..."'
-            } catch (Exception e) {
-                echo "Docker prune failed, but continuing..."
-            }
-        }
-    }
-}
 
 
     }
