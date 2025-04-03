@@ -1,8 +1,18 @@
+# Add required Terraform block with provider constraints
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.94.0"  # Pinned to your exact version
+    }
+  }
+}
+
 provider "aws" {
   region = "us-east-1"
 }
 
-# Security Group definition
+# Security Group definition (unchanged)
 resource "aws_security_group" "devops_sg" {
   name_prefix = "devops-sg-"
   description = "Security group for DevOps application"
@@ -59,10 +69,10 @@ resource "aws_security_group" "devops_sg" {
   }
 }
 
-# EC2 Instance definition with conditional creation
+# EC2 Instance definition with conditional creation (unchanged)
 resource "aws_instance" "devops_EC2" {
-  count                  = var.create_instance ? 1 : 0  # Create only if the variable is true
-  ami                    = "ami-084568db4383264d4"  # Ubuntu 22.04 LTS
+  count                  = var.create_instance ? 1 : 0
+  ami                    = "ami-084568db4383264d4"
   instance_type          = "t2.micro"
   key_name               = "testing_1"
   vpc_security_group_ids = [aws_security_group.devops_sg.id]
@@ -77,11 +87,9 @@ resource "aws_instance" "devops_EC2" {
               #!/bin/bash
               set -ex
               
-              # System updates
               sudo apt update -y
               sudo apt upgrade -y
 
-              # Docker installation
               sudo mkdir -m 0755 -p /etc/apt/keyrings
               curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
               echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
@@ -89,11 +97,8 @@ resource "aws_instance" "devops_EC2" {
               sudo apt update -y
               sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-              # User permissions
               sudo usermod -aG docker ubuntu
               echo "ubuntu ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/ubuntu
-
-              # Application setup
               sudo mkdir /app
               EOF
 
@@ -102,23 +107,23 @@ resource "aws_instance" "devops_EC2" {
   }
 
   lifecycle {
-    prevent_destroy = true  # Prevent accidental destruction of the instance
+    prevent_destroy = true
   }
 }
 
 variable "create_instance" {
   description = "Flag to control instance creation"
   type        = bool
-  default     = true  # Change this to `false` if you don't want to create a new instance
+  default     = true
 }
 
-# Outputs
+# Outputs (unchanged)
 output "ec2_public_ip" {
-  value       = aws_instance.devops_EC2[0].public_ip
+  value       = try(aws_instance.devops_EC2[0].public_ip, null)
   description = "Public IP address of the EC2 instance"
 }
 
 output "instance_id" {
-  value       = aws_instance.devops_EC2[0].id
+  value       = try(aws_instance.devops_EC2[0].id, null)
   description = "ID of the EC2 instance"
 }
