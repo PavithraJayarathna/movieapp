@@ -33,7 +33,6 @@ resource "aws_security_group" "devops_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow access to backend on port 8082
   ingress {
     from_port   = 8000
     to_port     = 8000
@@ -41,7 +40,7 @@ resource "aws_security_group" "devops_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-    # Allow all outbound traffic (Important!)
+  # Allow all outbound traffic
   egress {
     from_port   = 0
     to_port     = 0
@@ -56,19 +55,18 @@ resource "aws_instance" "devops_EC2" {
   key_name               = "devops-project"
   security_groups        = [aws_security_group.devops_sg.name]
 
-  # Setup for 24GB root volume
   root_block_device {
-    volume_size = 24  # GB
-    volume_type = "gp3"  # Or "gp3" for better performance
+    volume_size = 24
+    volume_type = "gp3"
   }
 
   lifecycle {
-    ignore_changes = [ami]  # Prevents instance from recreating due to AMI changes
+    ignore_changes = [ami]
   }
 
   user_data = <<-EOF
               #!/bin/bash
-              set -e  # Exit script on error
+              set -e
               
               echo "Updating system..."
               sudo apt update -y
@@ -95,9 +93,8 @@ resource "aws_instance" "devops_EC2" {
               echo "Adding user to Docker group..."
               sudo usermod -aG docker ubuntu
 
-              echo "Verifying Docker installation..."
-              docker --version
-              docker compose version
+              echo "Allowing SSH login for ubuntu user..."
+              echo "ubuntu ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/ubuntu
 
               echo "Docker installation completed successfully."
               EOF

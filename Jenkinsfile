@@ -4,7 +4,7 @@ pipeline {
         DOCKER_REGISTRY = 'pavithra0228'
         TF_CACHE_DIR = "C:\\terraform_cache"
         ANSIBLE_USER = 'ec2-user'
-        ANSIBLE_SSH_PRIVATE_KEY_PATH = ".\\ansible\\keys\\deploy_key.pem"
+        ANSIBLE_SSH_PRIVATE_KEY_PATH = "./ansible/keys/deploy_key.pem"
     }
     
     stages {
@@ -50,7 +50,6 @@ pipeline {
         stage('Ansible Deploy') {
             steps {
                 dir('ansible') {
-                    // Create inventory file
                     writeFile file: 'inventory.ini', text: """
                     [movieapp_servers]
                     ${env.EC2_PUBLIC_IP}
@@ -63,7 +62,6 @@ pipeline {
                     docker_registry=${env.DOCKER_REGISTRY}
                     """
                     
-                    // Handle SSH key
                     withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
                         bat """
                         if not exist keys mkdir keys
@@ -72,7 +70,6 @@ pipeline {
                         """
                     }
                     
-                    // Run Ansible playbook
                     bat """
                     docker run --rm -v "${pwd().replace('\\', '/')}:/ansible" \
                     -v "C:\\ProgramData\\Jenkins\\.ssh:/root/.ssh" \
@@ -88,7 +85,7 @@ pipeline {
         always { 
             cleanWs() 
             dir('terraform') {
-                bat "terraform destroy -auto-approve"  // Optional: Cleanup resources
+                bat "terraform destroy -auto-approve"  
             }
         }
         success { 
