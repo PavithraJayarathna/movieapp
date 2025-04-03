@@ -1,7 +1,7 @@
 # This file is maintained automatically by "terraform init".
 # Manual edits may be lost in future updates.
 
-provider "C:\Users\pavit\MovieApp\terraform\.terraform\providers\registry.terraform.io\hashicorp\aws" {
+provider "registry.terraform.io/hashicorp/aws" {
   version = "5.93.0"
   hashes = [
     "h1:8v3mNLg29p+pqnGd5P7qxINrT8NvwS3j+4PlvUyVr+U=",
