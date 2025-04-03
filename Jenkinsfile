@@ -58,9 +58,9 @@ pipeline {
 
                     [movieapp_servers:vars]
                     ansible_user=${env.ANSIBLE_USER}
+                    ansible_ssh_private_key_file=${env.ANSIBLE_SSH_PRIVATE_KEY_PATH}
                     ansible_python_interpreter=/usr/bin/python3
                     build_number=${env.BUILD_NUMBER}
-                    docker_registry=${env.DOCKER_REGISTRY}
                     """
                     withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
                         bat """
@@ -75,6 +75,7 @@ pipeline {
                 }
             }
         }
+
     }
     
     post {
