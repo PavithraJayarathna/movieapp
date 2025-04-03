@@ -8,14 +8,6 @@ pipeline {
         TF_CACHE_DIR = "C:\\terraform_cache"
     }
     stages {
-        /* STAGE 1: Code Checkout */
-        stage('SCM Checkout') {
-            steps {
-                git branch: 'pavinew', 
-                url: 'https://github.com/PavithraJayarathna/movieapp.git'
-            }
-        }
-
         /* STAGE 2: Terraform Deployment */
         stage('Terraform Apply') {
             steps {
