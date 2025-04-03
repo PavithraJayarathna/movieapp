@@ -2,7 +2,6 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# Fetch existing EC2 instance with tag Name=MovieEc2
 data "aws_instances" "existing" {
   filter {
     name   = "tag:Name"
@@ -10,7 +9,6 @@ data "aws_instances" "existing" {
   }
 }
 
-# Security Group for MovieApp
 resource "aws_security_group" "movieapp_sg" {
   name_prefix = "movieapp-sg-"
 
@@ -50,9 +48,8 @@ resource "aws_security_group" "movieapp_sg" {
   }
 }
 
-# Create EC2 instance only if no existing instance is found
 resource "aws_instance" "MovieEc2" {
-  count = length(data.aws_instances.existing.ids) > 0 ? 0 : 1  # Skip creation if instance exists
+  count = length(data.aws_instances.existing.ids) > 0 ? 0 : 1
 
   ami                    = "ami-071226ecf16aa7d96"
   instance_type          = "t2.micro"
@@ -60,16 +57,34 @@ resource "aws_instance" "MovieEc2" {
   security_groups        = [aws_security_group.movieapp_sg.name]
 
   lifecycle {
-    ignore_changes = [ami]  # Prevents instance from recreating due to AMI changes
+    ignore_changes = [ami]
   }
 
   user_data = <<-EOF
     #!/bin/bash
-    sudo apt-get update -y
-    sudo apt-get install -y docker.io
+    sudo yum update -y
+
+    # Install Docker
+    sudo yum install -y docker
     sudo systemctl start docker
     sudo systemctl enable docker
-    sudo usermod -aG docker ubuntu
+    sudo usermod -aG docker ec2-user
+
+    # Install Docker Compose
+    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
+    sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+
+    # Install Git & other tools
+    sudo yum install -y git unzip
+
+    # Pull MovieApp repo (Replace with your repo)
+    git clone https://github.com/yourusername/movieapp.git /home/ec2-user/movieapp
+    cd /home/ec2-user/movieapp
+
+    # Pre-download Docker images (for faster deployment)
+    sudo docker pull pavithra0228/movieapp-frontend:latest
+    sudo docker pull pavithra0228/movieapp-backend:latest
   EOF
 
   tags = {
@@ -77,7 +92,6 @@ resource "aws_instance" "MovieEc2" {
   }
 }
 
-# Output the EC2 public IP (existing or newly created)
 output "ec2_public_ip" {
   value       = length(data.aws_instances.existing.public_ips) > 0 ? data.aws_instances.existing.public_ips[0] : aws_instance.MovieEc2[0].public_ip
   description = "Public IP of the EC2 instance"

@@ -47,7 +47,7 @@ pipeline {
             }
         }
         
-        stage('Ansible Setup & Deploy') {
+        stage('Ansible Deploy') {
             steps {
                 dir('ansible') {
                     // Create inventory file
@@ -77,7 +77,7 @@ pipeline {
                     docker run --rm -v "${pwd().replace('\\', '/')}:/ansible" \
                     -v "C:\\ProgramData\\Jenkins\\.ssh:/root/.ssh" \
                     -w /ansible -e ANSIBLE_HOST_KEY_CHECKING=False \
-                    alpine/ansible sh -c "ansible-playbook -i inventory.ini -vv docker-setup.yml && ansible-playbook -i inventory.ini -vv deploy-movieapp.yml"
+                    alpine/ansible sh -c "ansible-playbook -i inventory.ini -vv deploy-movieapp.yml"
                     """
                 }
             }
