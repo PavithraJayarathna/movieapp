@@ -2,27 +2,24 @@ pipeline {
     agent any
     environment {
         DOCKER_REGISTRY = 'pavithra0228'
-        TF_CACHE_DIR = "C:\\\\terraform_cache"
+        TF_CACHE_DIR = "C:\\terraform_cache"
         ANSIBLE_USER = 'ec2-user'
     }
-    
+
     stages {
         stage('Terraform Setup') {
             steps {
                 script {
                     dir('terraform') {
-                        // Get EC2 Instance ID
                         def instanceId = bat(
                             script: '@aws ec2 describe-instances --filters "Name=tag:Name,Values=DevOpsEC2" "Name=instance-state-name,Values=running" --query "Reservations[].Instances[].InstanceId" --output text',
                             returnStdout: true
                         ).trim()
 
-                        // Debug output
                         echo "AWS CLI returned: '${instanceId}'"
 
-                        // If instance exists, skip Terraform provisioning
                         if (instanceId && instanceId.startsWith('i-')) {
-                            echo "Active 'DevOpsEC2' instance found (ID: ${instanceId}) - Skipping Terraform provisioning."
+                            echo "Active 'DevOpsEC2' instance found - Skipping Terraform provisioning."
                         } else {
                             echo "No running instance detected - Provisioning infrastructure..."
                             bat 'terraform init -input=false'
@@ -33,38 +30,38 @@ pipeline {
             }
         }
 
-
         stage('Docker Build & Push') {
-            environment {
-                DOCKER_CREDS = credentials('docker-hub-creds')
-            }
             steps {
-                bat """
-                echo %DOCKER_CREDS_PSW% | docker login -u %DOCKER_CREDS_USR% --password-stdin
-                docker build -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ./movieapp-frontend
-                docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
-                docker build -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ./movieapp-backend
-                docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
-                docker logout
-                """
+                script {
+                    def dockerCreds = credentials('docker-hub-creds')
+                    bat """
+                    echo ${dockerCreds.PSW} | docker login -u ${dockerCreds.USR} --password-stdin
+                    docker build -t ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER} ./movieapp-frontend
+                    docker push ${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}
+                    docker build -t ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER} ./movieapp-backend
+                    docker push ${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}
+                    docker logout
+                    """
+                }
             }
         }
-        
+
         stage('Ansible Deploy') {
             steps {
-                dir('ansible') {
-                    writeFile file: 'inventory.ini', text: """
+                script {
+                    def inventoryContent = """
                     [movieapp_servers]
                     ${env.EC2_PUBLIC_IP}
 
                     [movieapp_servers:vars]
-                    ansible_user=${env.ANSIBLE_USER}
+                    ansible_user=${ANSIBLE_USER}
                     ansible_ssh_private_key_file=./keys/deploy_key.pem
                     ansible_python_interpreter=/usr/bin/python3
-                    build_number=${env.BUILD_NUMBER}
-                    docker_registry=${env.DOCKER_REGISTRY}
+                    build_number=${BUILD_NUMBER}
+                    docker_registry=${DOCKER_REGISTRY}
                     """
-                    
+                    writeFile file: 'ansible/inventory.ini', text: inventoryContent
+
                     withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
                         bat """
                         if not exist keys mkdir keys
@@ -72,7 +69,7 @@ pipeline {
                         icacls "keys\\deploy_key.pem" /inheritance:r /grant:r "%USERNAME%":(R)
                         """
                     }
-                    
+
                     bat """
                     docker run --rm -v "%CD%:/ansible" -w /ansible \
                     -e ANSIBLE_HOST_KEY_CHECKING=False \
@@ -82,19 +79,19 @@ pipeline {
             }
         }
     }
-    
+
     post {
-        always { 
-            cleanWs() 
+        always {
+            cleanWs()
             dir('terraform') {
-                bat "terraform destroy -auto-approve"  
+                bat 'terraform destroy -auto-approve'
             }
         }
-        success { 
-            echo "Deployment Successful: ${env.EC2_PUBLIC_IP}" 
+        success {
+            echo "Deployment Successful: ${env.EC2_PUBLIC_IP}"
         }
-        failure { 
-            echo "Deployment Failed" 
+        failure {
+            echo "Deployment Failed"
         }
     }
 }
