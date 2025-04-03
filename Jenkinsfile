@@ -75,6 +75,19 @@ pipeline {
     }
 }
 
+stage('Cleanup Docker') {
+    steps {
+        script {
+            try {
+                sh 'docker system prune -af || echo "Prune already running, skipping..."'
+            } catch (Exception e) {
+                echo "Docker prune failed, but continuing..."
+            }
+        }
+    }
+}
+
+
     }
 
     post {
