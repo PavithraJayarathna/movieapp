@@ -14,13 +14,14 @@ pipeline {
                     dir('terraform') {
                         bat 'terraform init -input=false'
                         
-                        // Refresh state to recognize existing resources
+                        // Refresh state to ensure we have up-to-date information
                         bat 'terraform refresh'
-                        
-                        def tfState = bat(script: 'terraform state list', returnStdout: true).trim()
-                        
-                        if (tfState.contains("aws_instance.devops_EC2")) {
-                            echo "EC2 instance exists, skipping creation."
+
+                        // Check if EC2 instance exists using Terraform output
+                        def ec2InstanceId = bat(script: 'terraform output -raw ec2_instance_id', returnStdout: true).trim()
+
+                        if (ec2InstanceId) {
+                            echo "EC2 instance exists: ${ec2InstanceId}, skipping creation."
                         } else {
                             echo "No EC2 instance found, creating a new one."
                             bat 'terraform apply -auto-approve'
@@ -29,6 +30,7 @@ pipeline {
                 }
             }
         }
+
 
 
 
