@@ -5,6 +5,7 @@ import LoginPage from './pages/login';
 import SearchResult from './pages/SearchResult';
 import MovieDetails from './pages/MovieDetails';
 import Navbar from "./components/navbar";
+import MyMovies from './pages/MyMovies';
 
 import "./App.css";
 
@@ -13,9 +14,10 @@ function App() {
     <Router>
       <Navbar />
       <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/search" element={<SearchResult />} />
-        <Route path="/movie/:id" element={<MovieDetails />} />
+        <Route path="/" element={<LoginPage/>} />
+        <Route path="/search" element={<SearchResult/>} />
+        <Route path="/movie/:id" element={<MovieDetails/>} />
+        <Route path="/my-movies" element={<MyMovies/>} />
       </Routes>
     </Router>
   );

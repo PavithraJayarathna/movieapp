@@ -25,6 +25,8 @@ app.use(cors({
 app.use('/api', UserRouter);
 app.use('/api', MovieRouter);
 
+
+
 // Connect to MongoDB using environment variable for connection string
 
 mongoose.connect('mongodb+srv://madumalijayarathna09:Chanmadu@cluster0.ekd0ilq.mongodb.net/movieapp?retryWrites=true&w=majority&appName=Cluster0')

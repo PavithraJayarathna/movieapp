@@ -7,6 +7,7 @@ const router = express.Router();
 // router.get('/movie/:movieId', fetchAndSaveMovie);
 // router.get('/movies', getMovies); 
 // router.get('/movies/:id', getMovieById); 
+
 router.get('/movies/search/:movieName', searchMovieByName);
 
 export default router;  // Use export default instead of module.exports

@@ -5,14 +5,18 @@ const MovieDetails = () => {
   const { id } = useParams();
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isSaved, setIsSaved] = useState(false);
   const navigate = useNavigate();
 
   const OMDB_API_KEY = "cccd7d7b";
+  const userID = localStorage.getItem("user");
 
   useEffect(() => {
     const fetchMovieDetails = async () => {
       try {
-        const response = await fetch(`https://www.omdbapi.com/?apikey=PP${OMDB_API_KEY}&i=${id}&plot=full`);
+        const response = await fetch(
+          `https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${id}&plot=full`
+        );
         const data = await response.json();
         setMovie(data);
       } catch (error) {
@@ -21,8 +25,44 @@ const MovieDetails = () => {
       setLoading(false);
     };
 
+    const checkIfSaved = async () => {
+      try {
+        const response = await fetch(`http://localhost:8000/api/${userID}/movies`);
+        const savedMovies = await response.json();
+
+        console.log(savedMovies);
+
+        setIsSaved(savedMovies.includes(id));
+      } catch (error) {
+        console.error("Error checking saved movies:", error);
+      }
+    };
+
     fetchMovieDetails();
+    checkIfSaved();
   }, [id]);
+
+  const saveMovie = async () => {
+  if (!userID) {
+    alert("You must be logged in to save movies!");
+    return;
+  }
+
+  try {
+    const response = await fetch(`http://localhost:8000/api/${userID}/movies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ movieID: id, userID }),
+    });
+
+    const data = await response.json();
+    setIsSaved(true);
+    alert(data.message);
+  } catch (error) {
+    console.error("Error saving movie:", error);
+  }
+};
+
 
   if (loading) {
     return <p className="mt-10 text-center text-white">Loading movie details...</p>;
@@ -38,7 +78,7 @@ const MovieDetails = () => {
         onClick={() => navigate(-1)}
         className="px-4 py-2 mb-6 text-white bg-gray-700 rounded-lg hover:bg-gray-600"
       >
-        ← Go Back
+        ◀ Go Back
       </button>
 
       <div className="flex flex-col items-center gap-8 md:flex-row">
@@ -88,6 +128,17 @@ const MovieDetails = () => {
               ))}
             </div>
           </div>
+
+          {/* Save to Bucket Button */}
+          <button
+            onClick={saveMovie}
+            disabled={isSaved}
+            className={`mt-6 px-6 py-2 text-white rounded-lg ${
+              isSaved ? "bg-green-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500"
+            }`}
+          >
+            {isSaved ? "✔ Saved" : "🡻  Save to Bucket"}
+          </button>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import UserMovies from '../models/MyMovies.js';
 
 export const searchMovieByName = async (req, res) => {
     try {
@@ -55,6 +56,63 @@ export const searchMovieByName = async (req, res) => {
     } catch (error) {
         return res.status(500).json({ message: 'Server error', error: error.message });
     }
+};
+
+
+// Fetch user's saved movies
+export const getUserMovies = async (req, res) => {
+  const { userID } = req.params;
+
+  try {
+    const user = await UserMovies.findOne({ userID });
+
+    if (!user) return res.json({ savedMovies: [] });
+
+    res.json(user.savedMovies);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
+// Save a movie for a user
+export const saveUserMovie = async (req, res) => {
+  const { userID } = req.params;
+  const { movieID } = req.body;
+
+  try {
+    let user = await UserMovies.findOne({ userID });
+
+    if (!user) {
+      user = new UserMovies({ userID, savedMovies: [movieID] });
+    } else if (!user.savedMovies.includes(movieID)) {
+      user.savedMovies.push(movieID);
+    } else {
+      return res.status(400).json({ message: "Movie already saved" });
+    }
+
+    await user.save();
+    res.json({ message: "Movie saved!" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
+// Remove a movie from the user's bucket
+export const removeUserMovie = async (req, res) => {
+  const { userID, movieID } = req.params;
+
+  try {
+    const user = await UserMovies.findOne({ userID });
+
+    if (user) {
+      user.savedMovies = user.savedMovies.filter((id) => id !== movieID);
+      await user.save();
+    }
+
+    res.json({ message: "Movie removed" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
 };
 
 
