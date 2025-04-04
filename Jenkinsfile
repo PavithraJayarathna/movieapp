@@ -100,7 +100,7 @@ pipeline {
                     build_number=${BUILD_NUMBER}
                     """
                     
-                    bat 'wsl ansible-playbook -i ansible/inventory.ini ansible/deploy.yml'
+                    bat 'wsl ansible-playbook -i ansible/inventory.ini ansible/deploy-movieapp.yml'
                 }
             }
         }
