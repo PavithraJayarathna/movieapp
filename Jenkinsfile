@@ -90,7 +90,7 @@ pipeline {
                     
                     writeFile file: 'ansible/inventory.ini', text: """
                     [movieapp_servers]
-                    ${ec2_public_ip}
+                    ${publicIP}
                     
                     [movieapp_servers:vars]
                     ansible_user=ubuntu
