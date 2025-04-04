@@ -11,6 +11,10 @@ pipeline {
         stage('Terraform Setup') {
             steps {
                 script {
+                    
+                    deleteDir()
+                    checkout scm
+
                     dir('terraform') {
                         bat 'terraform init -input=false'
                         
