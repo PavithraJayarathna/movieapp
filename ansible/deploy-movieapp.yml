@@ -4,32 +4,59 @@
   become: yes
   tasks:
   
+    # Install Docker (if not installed)
     - name: Install Docker (if not installed)
       yum:
         name: docker
         state: present
 
+    # Start Docker service
     - name: Start Docker service
       service:
         name: docker
         state: started
         enabled: yes
 
+    # Log into Docker Hub
     - name: Log into Docker Hub
       command: "docker login -u pavithra0228 -p {{ lookup('env', 'DOCKER_PASSWORD') }}"
 
-    - name: Pull the latest image
+    # Pull the latest frontend image
+    - name: Pull the latest frontend image
       command: "docker pull pavithra0228/movieapp-frontend:{{ lookup('env', 'BUILD_NUMBER') }}"
 
-    - name: Stop any running container
+    # Stop any running frontend container
+    - name: Stop any running frontend container
       command: "docker stop movieapp-frontend || true"
       ignore_errors: yes
 
-    - name: Remove old container
+    # Remove old frontend container
+    - name: Remove old frontend container
       command: "docker rm movieapp-frontend || true"
       ignore_errors: yes
 
-    - name: Run Docker container
+    # Run frontend Docker container
+    - name: Run frontend Docker container
       command: >
-        docker run -d --name movieapp-frontend -p 80:3000 
+        docker run -d --name movieapp-frontend -p 80:3000
         pavithra0228/movieapp-frontend:{{ lookup('env', 'BUILD_NUMBER') }}
+
+    # Pull the latest backend image
+    - name: Pull the latest backend image
+      command: "docker pull pavithra0228/movieapp-backend:{{ lookup('env', 'BUILD_NUMBER') }}"
+
+    # Stop any running backend container
+    - name: Stop any running backend container
+      command: "docker stop movieapp-backend || true"
+      ignore_errors: yes
+
+    # Remove old backend container
+    - name: Remove old backend container
+      command: "docker rm movieapp-backend || true"
+      ignore_errors: yes
+
+    # Run backend Docker container
+    - name: Run backend Docker container
+      command: >
+        docker run -d --name movieapp-backend -p 5000:5000
+        pavithra0228/movieapp-backend:{{ lookup('env', 'BUILD_NUMBER') }}

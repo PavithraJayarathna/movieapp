@@ -37,21 +37,40 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
+                    // Build and push frontend image
                     withCredentials([usernamePassword(
                         credentialsId: 'docker-hub-creds',
                         usernameVariable: 'DOCKER_USERNAME',
                         passwordVariable: 'DOCKER_PASSWORD'
                     )]) {
+                        // Login to Docker Hub
                         bat """
                             echo | set /p="${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+                            // Build and push the frontend Docker image
                             docker build -t "${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}" ./movieapp-frontend
                             docker push "${DOCKER_REGISTRY}/movieapp-frontend:${BUILD_NUMBER}"
+                        """
+                    }
+
+                    // Build and push backend image
+                    withCredentials([usernamePassword(
+                        credentialsId: 'docker-hub-creds',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )]) {
+                        // Login to Docker Hub again (can reuse or do it separately)
+                        bat """
+                            echo | set /p="${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+                            // Build and push the backend Docker image
+                            docker build -t "${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}" ./movieapp-backend
+                            docker push "${DOCKER_REGISTRY}/movieapp-backend:${BUILD_NUMBER}"
                             docker logout
                         """
                     }
                 }
             }
         }
+
 
         stage('Ansible Deployment') {
             steps {
