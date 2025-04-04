@@ -12,6 +12,7 @@ pipeline {
             steps {
                 script {
                     dir('terraform') {
+                        bat 'terraform init -input=false'
                         
                         // Refresh state to ensure we have up-to-date information
                         bat 'terraform refresh'
