@@ -12,13 +12,12 @@ pipeline {
             steps {
                 script {
                     dir('terraform') {
-                        bat 'terraform init -input=false'
                         
                         // Refresh state to ensure we have up-to-date information
                         bat 'terraform refresh'
 
                         // Check if EC2 instance exists using Terraform output
-                        def ec2InstanceId = bat(script: 'terraform output -raw ec2_instance_id', returnStdout: true).trim()
+                        def ec2InstanceId = bat(script: 'terraform output -raw instance_id', returnStdout: true).trim()
 
                         if (ec2InstanceId) {
                             echo "EC2 instance exists: ${ec2InstanceId}, skipping creation."
