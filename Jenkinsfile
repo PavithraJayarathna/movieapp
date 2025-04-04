@@ -65,29 +65,34 @@ pipeline {
         stage('Ansible Deployment') {
             steps {
                 script {
+                    // Fetch the EC2 public IP using Terraform
                     def publicIP = bat(script: 'terraform output -raw ec2_public_ip', returnStdout: true).trim()
                     
                     if (!publicIP) {
                         error "Terraform did not return a valid EC2 public IP. Check your Terraform outputs."
                     }
 
+                    // Write Ansible inventory file
                     writeFile file: 'ansible/inventory.ini', text: """
                     [movieapp_servers]
                     ${publicIP}
                     
                     [movieapp_servers:vars]
                     ansible_user=ubuntu
-                    ansible_ssh_private_key_file=../keys/ec2_key.pem
+                    ansible_ssh_private_key_file=/mnt/c/Users/pavit/.ssh/ec2_key.pem
                     ansible_python_interpreter=/usr/bin/python3
                     docker_registry=pavithra0228
                     build_number=${BUILD_NUMBER}
                     """
 
-                    // Run Ansible playbook to deploy Docker container on EC2
-                    bat 'ansible-playbook -i ansible/inventory.ini ansible/deploy.yml'
+                    // Run Ansible playbook via WSL
+                    bat '''
+                        wsl ansible-playbook -i ansible/inventory.ini ansible/deploy.yml
+                    '''
                 }
             }
         }
+
 
 
 
