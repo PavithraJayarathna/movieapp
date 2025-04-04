@@ -76,7 +76,7 @@ pipeline {
                     ${publicIP}
                     
                     [movieapp_servers:vars]
-                    ansible_user=ec2-user
+                    ansible_user=ubuntu
                     ansible_ssh_private_key_file=../keys/ec2_key.pem
                     ansible_python_interpreter=/usr/bin/python3
                     docker_registry=pavithra0228
