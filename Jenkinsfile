@@ -20,7 +20,7 @@ pipeline {
                     branches: [[name: '*/main']],
                     extensions: [[
                         $class: 'CloneOption',
-                        depth: 1,  // Shallow clone
+                        depth: 1, 
                         timeout: 5
                     ]],
                     userRemoteConfigs: [[url: 'https://github.com/PavithraJayarathna/movieapp.git']]
@@ -113,7 +113,7 @@ pipeline {
                     bat 'docker system prune -af'
                 }
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    deleteDir()  // More reliable than cleanWs
+                    deleteDir()
                 }
             }
         }

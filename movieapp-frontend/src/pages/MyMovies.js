@@ -13,7 +13,7 @@ const MyMovies = () => {
 
     const fetchSavedMovies = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/${userID}/movies`);
+        const response = await fetch(`http://35.173.242.217:8000/api/${userID}/movies`);
         const data = await response.json();
 
         console.log(data);
@@ -45,7 +45,7 @@ const MyMovies = () => {
 
   const removeMovie = async (movieId) => {
     try {
-      await fetch(`http://localhost:8000/api/${userID}/movies/${movieId}`, {
+      await fetch(`http://35.173.242.217:8000/api/${userID}/movies/${movieId}`, {
         method: "DELETE",
       });
 
@@ -57,26 +57,26 @@ const MyMovies = () => {
 
   return (
     <div className="bg-[#04091d] min-h-screen text-white px-4 sm:px-6 lg:px-36 py-10">
-      <h1 className="text-3xl font-bold text-yellow-500 mb-6">My Movies</h1>
+      <h1 className="mb-6 text-3xl font-bold text-yellow-500">My Movies</h1>
 
       {movies.length === 0 ? (
         <p className="text-center text-gray-400">No movies saved.</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4">
           {movies.map((movie) => (
-            <div key={movie.imdbID} className="bg-gray-800 rounded-lg p-3 shadow-lg">
+            <div key={movie.imdbID} className="p-3 bg-gray-800 rounded-lg shadow-lg">
               <Link to={`/movie/${movie.imdbID}`}>
                 <img
                   src={movie.Poster}
                   alt={movie.Title}
-                  className="w-full h-60 object-cover rounded-md"
+                  className="object-cover w-full rounded-md h-60"
                 />
                 <h2 className="mt-2 text-lg font-semibold">{movie.Title}</h2>
-                <p className="text-gray-400 text-sm">{movie.Year}</p>
+                <p className="text-sm text-gray-400">{movie.Year}</p>
               </Link>
               <button
                 onClick={() => removeMovie(movie.imdbID)}
-                className="mt-3 w-full py-2 text-white bg-red-600 rounded-lg hover:bg-red-500"
+                className="w-full py-2 mt-3 text-white bg-red-600 rounded-lg hover:bg-red-500"
               >
                 Remove
               </button>

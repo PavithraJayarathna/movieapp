@@ -11,7 +11,7 @@ const MovieList = ({ title, movieIds }) => {
       try {
         const movieData = await Promise.all(
           movieIds.map(async (id) => {
-            const response = await fetch(`https://www.omdbapi.com/?key=${API_KEY}&i=${id}`); //This want to edit key->apikey
+            const response = await fetch(`https://www.omdbapi.com/?apikey=${API_KEY}&i=${id}`); //This want to edit key->apikey
             return response.json();
           })
         );

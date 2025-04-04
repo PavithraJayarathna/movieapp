@@ -27,7 +27,7 @@ const MovieDetails = () => {
 
     const checkIfSaved = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/${userID}/movies`);
+        const response = await fetch(`http://35.173.242.217:8000/api/${userID}/movies`);
         const savedMovies = await response.json();
 
         console.log(savedMovies);
@@ -49,7 +49,7 @@ const MovieDetails = () => {
   }
 
   try {
-    const response = await fetch(`http://localhost:8000/api/${userID}/movies`, {
+    const response = await fetch(`http://35.173.242.217:8000/api/${userID}/movies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ movieID: id, userID }),
